@@ -25,6 +25,9 @@ public class Sotrudnik {
     private double oklad;
     private double premiya;
 
+    @Lob
+    private byte[] avatar;
+
     @JsonIgnore
     @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "sotrudnik_id")
@@ -60,6 +63,25 @@ public class Sotrudnik {
         this.phone = phone;
         this.oklad = oklad;
         this.premiya = premiya;
+    }
+
+    public Sotrudnik(String fio, String post, String phone, double oklad, double premiya, byte[] avatar) {
+        this.fio = fio;
+        this.post = post;
+        this.phone = phone;
+        this.oklad = oklad;
+        this.premiya = premiya;
+        this.avatar = avatar;
+    }
+
+    public Sotrudnik(Long id, String fio, String post, String phone, double oklad, double premiya, byte[] avatar) {
+        this.id = id;
+        this.fio = fio;
+        this.post = post;
+        this.phone = phone;
+        this.oklad = oklad;
+        this.premiya = premiya;
+        this.avatar = avatar;
     }
 
     @Override
