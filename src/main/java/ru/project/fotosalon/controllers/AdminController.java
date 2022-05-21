@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import ru.project.fotosalon.dto.Login;
 import ru.project.fotosalon.dto.UserDto;
 import ru.project.fotosalon.dto.UserSotrudnik;
@@ -16,6 +17,9 @@ import ru.project.fotosalon.repos.SotrudnikRepository;
 import ru.project.fotosalon.repos.UserRepository;
 import ru.project.fotosalon.services.UserService;
 
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -177,6 +181,27 @@ public class AdminController {
         Sotrudnik sotrudnik = userSotrudnik.getSotrudnik();
         sotrudnik.setUsername(user.getUsername());
         return sotrudnikRepository.save(sotrudnik);
+    }
+
+    @PostMapping("/admin/sotrudnik/add-avatar/{id}")
+    public @ResponseBody Sotrudnik addAvatar(@PathVariable("id") Long id, @RequestParam("file") MultipartFile file){
+        Sotrudnik sotrudnik = sotrudnikRepository.findById(id).orElse(null);
+        try {
+            sotrudnik.setAvatar(file.getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return sotrudnikRepository.save(sotrudnik);
+    }
+
+    @GetMapping("/admin/sotrudnik/get-avatar/{id}")
+    @ResponseBody
+    void showImage(@PathVariable("id") Long id, HttpServletResponse response)
+            throws ServletException, IOException {
+        Sotrudnik sotrudnik = sotrudnikRepository.findById(id).orElse(null);
+        response.setContentType("image/jpeg, image/jpg, image/png, image/gif");
+        response.getOutputStream().write(sotrudnik.getAvatar());
+        response.getOutputStream().close();
     }
 
 

@@ -3,9 +3,9 @@ package ru.project.fotosalon.models;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import ru.project.fotosalon.utils.TypeHour;
 
 import javax.persistence.*;
-import java.time.LocalDate;
 import java.util.Date;
 
 @Getter
@@ -19,18 +19,19 @@ public class Grafik {
     private Long id;
 
     private Date data;
-    private String type;
+    @Enumerated(EnumType.STRING)
+    private TypeHour type;
 
     @ManyToOne
     Sotrudnik sotrudnik;
 
-    public Grafik(Date data, String type, Sotrudnik sotrudnik) {
+    public Grafik(Date data, Sotrudnik sotrudnik) {
         this.data = data;
-        this.type = type;
+        this.type = TypeHour.FREE;
         this.sotrudnik = sotrudnik;
     }
 
-    public Grafik(Long id, Date data, String type, Sotrudnik sotrudnik) {
+    public Grafik(Long id, Date data, TypeHour type, Sotrudnik sotrudnik) {
         this.id = id;
         this.data = data;
         this.type = type;
