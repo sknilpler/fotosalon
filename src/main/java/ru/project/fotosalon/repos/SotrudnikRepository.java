@@ -3,5 +3,9 @@ package ru.project.fotosalon.repos;
 import org.springframework.data.repository.CrudRepository;
 import ru.project.fotosalon.models.Sotrudnik;
 
+import java.util.List;
+
 public interface SotrudnikRepository extends CrudRepository<Sotrudnik, Long> {
+
+    Sotrudnik findByUsername(String username);
 }
