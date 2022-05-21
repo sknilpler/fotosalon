@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import javax.persistence.*;
+import java.util.Arrays;
 import java.util.List;
 
 @Getter
@@ -19,6 +20,7 @@ public class Sotrudnik {
     @Column(name = "id", nullable = false)
     private Long id;
 
+    private String username;
     private String fio;
     private String post;
     private String phone;
@@ -48,7 +50,8 @@ public class Sotrudnik {
     @JoinColumn(name = "sotrudnik_id")
     List<Zakaz> zakazList;
 
-    public Sotrudnik(String fio, String post, String phone, double oklad, double premiya) {
+    public Sotrudnik(String username, String fio, String post, String phone, double oklad, double premiya) {
+        this.username = username;
         this.fio = fio;
         this.post = post;
         this.phone = phone;
@@ -56,8 +59,9 @@ public class Sotrudnik {
         this.premiya = premiya;
     }
 
-    public Sotrudnik(Long id, String fio, String post, String phone, double oklad, double premiya) {
+    public Sotrudnik(Long id, String username, String fio, String post, String phone, double oklad, double premiya) {
         this.id = id;
+        this.username = username;
         this.fio = fio;
         this.post = post;
         this.phone = phone;
@@ -65,7 +69,8 @@ public class Sotrudnik {
         this.premiya = premiya;
     }
 
-    public Sotrudnik(String fio, String post, String phone, double oklad, double premiya, byte[] avatar) {
+    public Sotrudnik(String username, String fio, String post, String phone, double oklad, double premiya, byte[] avatar) {
+        this.username = username;
         this.fio = fio;
         this.post = post;
         this.phone = phone;
@@ -74,8 +79,9 @@ public class Sotrudnik {
         this.avatar = avatar;
     }
 
-    public Sotrudnik(Long id, String fio, String post, String phone, double oklad, double premiya, byte[] avatar) {
+    public Sotrudnik(Long id, String username, String fio, String post, String phone, double oklad, double premiya, byte[] avatar) {
         this.id = id;
+        this.username = username;
         this.fio = fio;
         this.post = post;
         this.phone = phone;
@@ -88,11 +94,13 @@ public class Sotrudnik {
     public String toString() {
         return "Sotrudnik{" +
                 "id=" + id +
+                ", username='" + username + '\'' +
                 ", fio='" + fio + '\'' +
                 ", post='" + post + '\'' +
                 ", phone='" + phone + '\'' +
                 ", oklad=" + oklad +
                 ", premiya=" + premiya +
+                ", avatar=" + Arrays.toString(avatar) +
                 '}';
     }
 }

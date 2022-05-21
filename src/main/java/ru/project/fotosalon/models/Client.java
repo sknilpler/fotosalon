@@ -18,6 +18,7 @@ public class Client {
     @Column(name = "id", nullable = false)
     private Long id;
 
+    private String username;
     private String fio;
     private String email;
     private String phone;
@@ -32,14 +33,16 @@ public class Client {
     @JoinColumn(name = "client_id")
     List<Zakaz> zakazList;
 
-    public Client(String fio, String email, String phone) {
+    public Client(Long id, String username, String fio, String email, String phone) {
+        this.id = id;
+        this.username = username;
         this.fio = fio;
         this.email = email;
         this.phone = phone;
     }
 
-    public Client(Long id, String fio, String email, String phone) {
-        this.id = id;
+    public Client(String username, String fio, String email, String phone) {
+        this.username = username;
         this.fio = fio;
         this.email = email;
         this.phone = phone;
@@ -49,6 +52,7 @@ public class Client {
     public String toString() {
         return "Client{" +
                 "id=" + id +
+                ", username='" + username + '\'' +
                 ", fio='" + fio + '\'' +
                 ", email='" + email + '\'' +
                 ", phone='" + phone + '\'' +
