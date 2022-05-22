@@ -4,4 +4,5 @@ import org.springframework.data.repository.CrudRepository;
 import ru.project.fotosalon.models.Portfolio;
 
 public interface PortfolioRepository extends CrudRepository<Portfolio, Long> {
+    Portfolio findBySotrudnikId(Long id);
 }

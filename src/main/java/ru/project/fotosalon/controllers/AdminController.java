@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ru.project.fotosalon.dto.Login;
@@ -16,6 +17,7 @@ import ru.project.fotosalon.repos.RoleRepository;
 import ru.project.fotosalon.repos.SotrudnikRepository;
 import ru.project.fotosalon.repos.UserRepository;
 import ru.project.fotosalon.services.UserService;
+import ru.project.fotosalon.utils.FileUploadUtil;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
@@ -186,8 +188,13 @@ public class AdminController {
     @PostMapping("/admin/sotrudnik/add-avatar/{id}")
     public @ResponseBody Sotrudnik addAvatar(@PathVariable("id") Long id, @RequestParam("file") MultipartFile file){
         Sotrudnik sotrudnik = sotrudnikRepository.findById(id).orElse(null);
+        String fileName = StringUtils.cleanPath(file.getOriginalFilename());
+        sotrudnik.setAvatar(fileName);
+
+        String uploadDir = "photos/avatar/" + sotrudnik.getId();
+
         try {
-            sotrudnik.setAvatar(file.getBytes());
+            FileUploadUtil.saveFile(uploadDir, fileName, file);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -196,12 +203,16 @@ public class AdminController {
 
     @GetMapping("/admin/sotrudnik/get-avatar/{id}")
     @ResponseBody
-    void showImage(@PathVariable("id") Long id, HttpServletResponse response)
+    String showImage(@PathVariable("id") Long id, HttpServletResponse response)
             throws ServletException, IOException {
         Sotrudnik sotrudnik = sotrudnikRepository.findById(id).orElse(null);
-        response.setContentType("image/jpeg, image/jpg, image/png, image/gif");
-        response.getOutputStream().write(sotrudnik.getAvatar());
-        response.getOutputStream().close();
+        return sotrudnik.getAvatarImagePath();
+    }
+
+    @RequestMapping(value = "/admin/sotrudnik/all-by-post/{post}", method = RequestMethod.GET)
+    public @ResponseBody
+    Iterable<Sotrudnik> getAllByPost(@PathVariable("post") String post) {
+        return sotrudnikRepository.findAllByPost(post);
     }
 
 

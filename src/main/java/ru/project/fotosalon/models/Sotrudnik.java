@@ -27,8 +27,7 @@ public class Sotrudnik {
     private double oklad;
     private double premiya;
 
-    @Lob
-    private byte[] avatar;
+    private String avatar;
 
     @JsonIgnore
     @OneToMany(cascade = CascadeType.ALL)
@@ -69,7 +68,7 @@ public class Sotrudnik {
         this.premiya = premiya;
     }
 
-    public Sotrudnik(String username, String fio, String post, String phone, double oklad, double premiya, byte[] avatar) {
+    public Sotrudnik(String username, String fio, String post, String phone, double oklad, double premiya, String avatar) {
         this.username = username;
         this.fio = fio;
         this.post = post;
@@ -79,7 +78,7 @@ public class Sotrudnik {
         this.avatar = avatar;
     }
 
-    public Sotrudnik(Long id, String username, String fio, String post, String phone, double oklad, double premiya, byte[] avatar) {
+    public Sotrudnik(Long id, String username, String fio, String post, String phone, double oklad, double premiya, String avatar) {
         this.id = id;
         this.username = username;
         this.fio = fio;
@@ -88,6 +87,13 @@ public class Sotrudnik {
         this.oklad = oklad;
         this.premiya = premiya;
         this.avatar = avatar;
+    }
+
+    @Transient
+    public String getAvatarImagePath() {
+        if (avatar == null || id == null) return null;
+
+        return "/photos/avatar/" + id + "/" + avatar;
     }
 
     @Override
@@ -100,7 +106,6 @@ public class Sotrudnik {
                 ", phone='" + phone + '\'' +
                 ", oklad=" + oklad +
                 ", premiya=" + premiya +
-                ", avatar=" + Arrays.toString(avatar) +
                 '}';
     }
 }

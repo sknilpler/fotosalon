@@ -16,34 +16,33 @@ public class PhotoFile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;
-
-    @Lob
-    private byte[] data;
+    private String url;
 
     @ManyToOne
     private Portfolio portfolio;
 
-    public PhotoFile(String name, byte[] data, Portfolio portfolio) {
-        this.name = name;
-
-        this.data = data;
+    public PhotoFile(String url, Portfolio portfolio) {
+        this.url = url;
         this.portfolio = portfolio;
     }
 
-    public PhotoFile(Long id, String name, byte[] data, Portfolio portfolio) {
+    public PhotoFile(Long id, String url, Portfolio portfolio) {
         this.id = id;
-        this.name = name;
-
-        this.data = data;
+        this.url = url;
         this.portfolio = portfolio;
+    }
+    @Transient
+    public String getPhotoImagePath() {
+        if (url == null || id == null) return null;
+
+        return "/photos/portfolio/" + portfolio.getId() + "/" + url;
     }
 
     @Override
     public String toString() {
         return "PhotoFile{" +
                 "id=" + id +
-                ", name='" + name + '\'' +
+                ", url='" + url + '\'' +
                 ", portfolio=" + portfolio +
                 '}';
     }
