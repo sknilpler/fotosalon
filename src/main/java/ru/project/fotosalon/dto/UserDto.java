@@ -11,15 +11,22 @@ public class UserDto {
     private String password;
     @Transient
     private String passwordConfirm;
+    private Set<Role> roles;
 
-
-    Set<Role> roles;
+    public UserDto() {
+    }
 
     public UserDto(String username, String password, String passwordConfirm, Set<Role> roles) {
         this.username = username;
         this.password = password;
         this.passwordConfirm = passwordConfirm;
         this.roles = roles;
+    }
+
+    public UserDto(String username, String password, String passwordConfirm) {
+        this.username = username;
+        this.password = password;
+        this.passwordConfirm = passwordConfirm;
     }
 
     public String getUsername() {

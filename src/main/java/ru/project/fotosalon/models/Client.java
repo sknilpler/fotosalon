@@ -48,6 +48,12 @@ public class Client {
         this.phone = phone;
     }
 
+    public Client(String fio, String email, String phone) {
+        this.fio = fio;
+        this.email = email;
+        this.phone = phone;
+    }
+
     @Override
     public String toString() {
         return "Client{" +

@@ -7,12 +7,15 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import ru.project.fotosalon.dto.AddGrafikDto;
 import ru.project.fotosalon.dto.Login;
 import ru.project.fotosalon.dto.UserDto;
 import ru.project.fotosalon.dto.UserSotrudnik;
+import ru.project.fotosalon.models.Grafik;
 import ru.project.fotosalon.models.Role;
 import ru.project.fotosalon.models.Sotrudnik;
 import ru.project.fotosalon.models.User;
+import ru.project.fotosalon.repos.GrafikRepository;
 import ru.project.fotosalon.repos.RoleRepository;
 import ru.project.fotosalon.repos.SotrudnikRepository;
 import ru.project.fotosalon.repos.UserRepository;
@@ -22,9 +25,9 @@ import ru.project.fotosalon.utils.FileUploadUtil;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 @CrossOrigin
 @Controller
@@ -38,6 +41,8 @@ public class AdminController {
     UserService userService;
     @Autowired
     SotrudnikRepository sotrudnikRepository;
+    @Autowired
+    GrafikRepository grafikRepository;
 
     @RequestMapping(value = "/admin/get-roles", method = RequestMethod.GET)
     public @ResponseBody
@@ -174,15 +179,20 @@ public class AdminController {
     public @ResponseBody
     Sotrudnik saveUserSotrudnik(@RequestBody UserSotrudnik userSotrudnik) {
         System.out.println(userSotrudnik.toString());
-        UserDto userDto = userSotrudnik.getUser();
-        User user = new User(userDto.getUsername(), userDto.getPassword(), userDto.getPasswordConfirm());
+       // UserDto userDto = userSotrudnik.getUser();
+       // User user = new User(userDto.getUsername(), userDto.getPassword(), userDto.getPasswordConfirm());
+        User user = new User(userSotrudnik.getUsername(), userSotrudnik.getPassword(), userSotrudnik.getPassword());
         Set<Role> roles = new HashSet<>();
-        userDto.getRoles().forEach(r -> roles.add(roleRepository.findByName(r.getName())));
+       // userDto.getRoles().forEach(r -> roles.add(roleRepository.findByName(r.getName())));
+        userSotrudnik.getRoles().forEach(r -> roles.add(roleRepository.findByName(r.getName())));
         user.setRoles(roles);
-        userService.saveUser(user);
-        Sotrudnik sotrudnik = userSotrudnik.getSotrudnik();
-        sotrudnik.setUsername(user.getUsername());
-        return sotrudnikRepository.save(sotrudnik);
+       if (userService.saveUser(user)){
+           Sotrudnik sotrudnik = new Sotrudnik(userSotrudnik.getUsername(),userSotrudnik.getFio(),userSotrudnik.getPost(),userSotrudnik.getPhone(),userSotrudnik.getOklad(),userSotrudnik.getPremiya());
+           return sotrudnikRepository.save(sotrudnik);
+       } else return new Sotrudnik(null,null,null,null,0,0);
+        //Sotrudnik sotrudnik = userSotrudnik.getSotrudnik();
+        //sotrudnik.setUsername(user.getUsername());
+        //return sotrudnikRepository.save(sotrudnik);
     }
 
     @PostMapping("/admin/sotrudnik/add-avatar/{id}")
@@ -214,6 +224,45 @@ public class AdminController {
     Iterable<Sotrudnik> getAllByPost(@PathVariable("post") String post) {
         return sotrudnikRepository.findAllByPost(post);
     }
+
+    @PostMapping("/admin/sotrudnik/add-grafik/")
+    public @ResponseBody
+    List<Grafik> addGrafik(@RequestBody AddGrafikDto grafikDto){
+        System.out.println(grafikDto.toString());
+        Sotrudnik sotrudnik = sotrudnikRepository.findById(grafikDto.getIdSotr()).orElse(null);
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+        for (String s:grafikDto.getDates()) {
+            try {
+                grafikRepository.save(new Grafik(simpleDateFormat.parse(s), sotrudnik));
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+        }
+        return grafikRepository.findAllBySotrudnikId(grafikDto.getIdSotr());
+    }
+
+    @RequestMapping(value = "/admin/sotrudnik/{id}/get-grafik/from/{date1}/to/{date2}", method = RequestMethod.GET)
+    public @ResponseBody
+    Iterable<Grafik> getGrafikBySotrudnikAndDate(@PathVariable("id") Long id, @PathVariable("date1") String str_date1, @PathVariable("date2") String str_date2) {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+        Date date1 = new Date();
+        Date date2 = new Date();
+        try {
+            date1 = simpleDateFormat.parse(str_date1);
+            date2 = simpleDateFormat.parse(str_date2);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return grafikRepository.findBySotrudnikAndDate(id,date1,date2);
+    }
+
+    @RequestMapping(value = "/admin/grafik/{id}/delete", method = RequestMethod.GET)
+    public @ResponseBody
+    ResponseEntity<String> delGrafik(@PathVariable("id") Long id) {
+        grafikRepository.deleteById(id);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
 
 
 }
