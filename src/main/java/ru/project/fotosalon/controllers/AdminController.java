@@ -7,18 +7,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import ru.project.fotosalon.dto.AddGrafikDto;
-import ru.project.fotosalon.dto.Login;
-import ru.project.fotosalon.dto.UserDto;
-import ru.project.fotosalon.dto.UserSotrudnik;
-import ru.project.fotosalon.models.Grafik;
-import ru.project.fotosalon.models.Role;
-import ru.project.fotosalon.models.Sotrudnik;
-import ru.project.fotosalon.models.User;
-import ru.project.fotosalon.repos.GrafikRepository;
-import ru.project.fotosalon.repos.RoleRepository;
-import ru.project.fotosalon.repos.SotrudnikRepository;
-import ru.project.fotosalon.repos.UserRepository;
+import ru.project.fotosalon.dto.*;
+import ru.project.fotosalon.models.*;
+import ru.project.fotosalon.repos.*;
 import ru.project.fotosalon.services.UserService;
 import ru.project.fotosalon.utils.FileUploadUtil;
 
@@ -34,15 +25,21 @@ import java.util.*;
 public class AdminController {
 
     @Autowired
-    UserRepository userRepository;
+    private UserRepository userRepository;
     @Autowired
-    RoleRepository roleRepository;
+    private RoleRepository roleRepository;
     @Autowired
-    UserService userService;
+    private UserService userService;
     @Autowired
-    SotrudnikRepository sotrudnikRepository;
+    private SotrudnikRepository sotrudnikRepository;
     @Autowired
-    GrafikRepository grafikRepository;
+    private GrafikRepository grafikRepository;
+    @Autowired
+    private UslugaRepository uslugaRepository;
+    @Autowired
+    private SkladRepository skladRepository;
+    @Autowired
+    private RashodnikRepository rashodnikRepository;
 
     @RequestMapping(value = "/admin/get-roles", method = RequestMethod.GET)
     public @ResponseBody
@@ -263,6 +260,77 @@ public class AdminController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @RequestMapping(value = "/admin/usluga/all", method = RequestMethod.GET)
+    public @ResponseBody
+    Iterable<Usluga> getAllUsluga() {
+        return uslugaRepository.findAll();
+    }
+
+    @RequestMapping(value = "/admin/usluga/by-sotrudnik/{id}", method = RequestMethod.GET)
+    public @ResponseBody
+    List<Usluga> getAllUslugaBySotrudnik( @PathVariable("id") Long id) {
+        return uslugaRepository.findAllBySotrudnikId(id);
+    }
+
+
+    @PostMapping("/admin/usluga/add/{id}")
+    public @ResponseBody
+    Usluga addUsluga(@RequestBody Usluga usluga, @PathVariable("id") Long id){
+        System.out.println(usluga.toString());
+        Sotrudnik sotr = sotrudnikRepository.findById(id).orElse(null);
+        usluga.setSotrudnik(sotr);
+        return uslugaRepository.save(usluga);
+    }
+
+    @PostMapping("/admin/usluga/add-with-rashodniks/")
+    public @ResponseBody
+    Usluga addUslugaWithRash(@RequestBody UslugaRashodnikiDto u) {
+        System.out.println(u.toString());
+        Sotrudnik sotr = sotrudnikRepository.findById(u.getId_sotr()).orElse(null);
+        Usluga usluga = uslugaRepository.save(new Usluga(u.getName(),u.getPrice(),u.getDuration(),u.getNumbers(),sotr));
+        u.getList().forEach(r -> {
+            rashodnikRepository.save(new Rashodnik(r.getNumbers(),usluga,skladRepository.findById(r.getId_sklad()).orElse(null)));
+        });
+
+        return usluga;
+    }
+
+    @PostMapping("/admin/usluga/edit")
+    public @ResponseBody
+    Usluga addUsluga(@RequestBody UslugaDto ustemp){
+        System.out.println(ustemp.toString());
+        Usluga usluga = uslugaRepository.findById(ustemp.getId()).orElse(null);
+        Sotrudnik sotr = sotrudnikRepository.findById(ustemp.getId_sotr()).orElse(null);
+        usluga.setDuration(ustemp.getDuration());
+        usluga.setName(ustemp.getName());
+        usluga.setNumbers(ustemp.getNumbers());
+        usluga.setPrice(ustemp.getPrice());
+        usluga.setSotrudnik(sotr);
+        return uslugaRepository.save(usluga);
+    }
+
+    @PostMapping("/admin/rashodnik/add/")
+    public @ResponseBody
+    Rashodnik addRashodnik(@RequestBody RashodnikDto rashodnikDto){
+        System.out.println(rashodnikDto.toString());
+        Sklad sklad = skladRepository.findById(rashodnikDto.getId_sklad()).orElse(null);
+        Usluga usluga = uslugaRepository.findById(rashodnikDto.getId_uslugi()).orElse(null);
+        return rashodnikRepository.save(new Rashodnik(rashodnikDto.getNumbers(),usluga,sklad));
+    }
+
+    @RequestMapping(value = "/admin/usluga/{id}/delete", method = RequestMethod.GET)
+    public @ResponseBody
+    ResponseEntity<String> delUsluga(@PathVariable("id") Long id) {
+        uslugaRepository.deleteById(id);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/admin/rashodnik/{id}/delete", method = RequestMethod.GET)
+    public @ResponseBody
+    ResponseEntity<String> delRashodnik(@PathVariable("id") Long id) {
+        rashodnikRepository.deleteById(id);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 
 
 }

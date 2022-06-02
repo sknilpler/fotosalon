@@ -1,5 +1,6 @@
 package ru.project.fotosalon.config;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -20,8 +21,13 @@ public class MvcConfig implements WebMvcConfigurer {
         Path uploadDir = Paths.get(dirName);
         String uploadPath = uploadDir.toFile().getAbsolutePath();
 
-        if (dirName.startsWith("../")) dirName = dirName.replace("../", "");
+        //if (dirName.startsWith("../")) dirName = dirName.replace("../", "");
 
-        registry.addResourceHandler("/" + dirName + "/**").addResourceLocations("file:/"+ uploadPath + "/");
+        //if (dirName.startsWith(".."+ File.separator)) dirName = dirName.replace(".."+File.separator, "");
+
+       registry.addResourceHandler("/photos/**").addResourceLocations("file:"+ uploadPath + File.separator);
+        System.out.println("####################################################");
+        System.out.println(uploadPath + File.separator);
+        //registry.addResourceHandler(File.separator + dirName + File.separator+"**").addResourceLocations("file:/"+ uploadPath + "/");
     }
 }

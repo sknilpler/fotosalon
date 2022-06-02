@@ -50,6 +50,21 @@ public class Usluga {
         this.numbers = numbers;
     }
 
+    public Usluga(Long id, String name, double price, int duration, int numbers) {
+        this.id = id;
+        this.name = name;
+        this.price = price;
+        this.duration = duration;
+        this.numbers = numbers;
+    }
+
+    public Usluga(String name, double price, int duration, int numbers) {
+        this.name = name;
+        this.price = price;
+        this.duration = duration;
+        this.numbers = numbers;
+    }
+
     public Usluga(Long id, String name, double price, int duration, int numbers, Sotrudnik sotrudnik) {
         this.id = id;
         this.name = name;
