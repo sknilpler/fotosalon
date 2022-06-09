@@ -3,6 +3,7 @@ package ru.project.fotosalon.models;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import ru.project.fotosalon.utils.ZakazStatus;
 
 import javax.persistence.*;
 import java.util.Date;
@@ -20,8 +21,10 @@ public class Zakaz {
     private Date orderDate;
     private Date completeDate;
     private Date issueDate;
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private ZakazStatus status;
     private double totalPrice;
+    private int number;
 
     @ManyToOne
     Client client;
@@ -32,7 +35,7 @@ public class Zakaz {
     @ManyToOne
     Usluga usluga;
 
-    public Zakaz(Date orderDate, Date completeDate, Date issueDate, String status, double totalPrice, Client client, Sotrudnik sotrudnik, Usluga usluga) {
+    public Zakaz(Date orderDate, Date completeDate, Date issueDate, ZakazStatus status, double totalPrice, Client client, Sotrudnik sotrudnik, Usluga usluga, int number) {
         this.orderDate = orderDate;
         this.completeDate = completeDate;
         this.issueDate = issueDate;
@@ -41,9 +44,10 @@ public class Zakaz {
         this.client = client;
         this.sotrudnik = sotrudnik;
         this.usluga = usluga;
+        this.number = number;
     }
 
-    public Zakaz(Long id, Date orderDate, Date completeDate, Date issueDate, String status, double totalPrice, Client client, Sotrudnik sotrudnik, Usluga usluga) {
+    public Zakaz(Long id, Date orderDate, Date completeDate, Date issueDate, ZakazStatus status, double totalPrice, Client client, Sotrudnik sotrudnik, Usluga usluga, int number) {
         this.id = id;
         this.orderDate = orderDate;
         this.completeDate = completeDate;
@@ -53,6 +57,7 @@ public class Zakaz {
         this.client = client;
         this.sotrudnik = sotrudnik;
         this.usluga = usluga;
+        this.number = number;
     }
 
     @Override

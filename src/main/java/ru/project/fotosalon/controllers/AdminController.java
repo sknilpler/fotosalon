@@ -20,8 +20,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-@CrossOrigin
-@Controller
+
+@RestController
+@CrossOrigin(origins = "*")
 public class AdminController {
 
     @Autowired
@@ -222,15 +223,15 @@ public class AdminController {
         return sotrudnikRepository.findAllByPost(post);
     }
 
-    @PostMapping("/admin/sotrudnik/add-grafik/")
+    @PostMapping("/admin/sotrudnik/add-grafik")
     public @ResponseBody
     List<Grafik> addGrafik(@RequestBody AddGrafikDto grafikDto){
         System.out.println(grafikDto.toString());
         Sotrudnik sotrudnik = sotrudnikRepository.findById(grafikDto.getIdSotr()).orElse(null);
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm");
-        for (String s:grafikDto.getDates()) {
+        for (DatesDto d:grafikDto.getDates()) {
             try {
-                grafikRepository.save(new Grafik(simpleDateFormat.parse(s), sotrudnik));
+                grafikRepository.save(new Grafik(simpleDateFormat.parse(d.getDate()), sotrudnik));
             } catch (ParseException e) {
                 e.printStackTrace();
             }
@@ -282,7 +283,7 @@ public class AdminController {
         return uslugaRepository.save(usluga);
     }
 
-    @PostMapping("/admin/usluga/add-with-rashodniks/")
+    @PostMapping("/admin/usluga/add-with-rashodniks")
     public @ResponseBody
     Usluga addUslugaWithRash(@RequestBody UslugaRashodnikiDto u) {
         System.out.println(u.toString());
@@ -309,7 +310,7 @@ public class AdminController {
         return uslugaRepository.save(usluga);
     }
 
-    @PostMapping("/admin/rashodnik/add/")
+    @PostMapping("/admin/rashodnik/add")
     public @ResponseBody
     Rashodnik addRashodnik(@RequestBody RashodnikDto rashodnikDto){
         System.out.println(rashodnikDto.toString());
@@ -330,6 +331,37 @@ public class AdminController {
     ResponseEntity<String> delRashodnik(@PathVariable("id") Long id) {
         rashodnikRepository.deleteById(id);
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/admin/rashodniki-all", method = RequestMethod.GET)
+    public @ResponseBody
+    Iterable<Rashodnik> getAllRashodnik() {
+        return rashodnikRepository.findAll();
+    }
+
+    @RequestMapping(value = "/admin/rashodniki-from-sklad/{id}", method = RequestMethod.GET)
+    public @ResponseBody
+    List<Rashodnik> getRashodnikSklad(@PathVariable("id") Long id) {
+        return rashodnikRepository.findAllBySkladId(id);
+    }
+
+    @RequestMapping(value = "/admin/get-usluga/{id}", method = RequestMethod.GET)
+    public @ResponseBody
+    UslugaRashodnikiDto2 getUsluga(@PathVariable("id") Long id) {
+        Usluga usluga = uslugaRepository.findById(id).orElse(null);
+        List<Sklad> skladList = new ArrayList<>();
+        usluga.getRashodnikList().forEach(r -> {
+            skladList.add(r.getSklad());
+        });
+        UslugaRashodnikiDto2 dto = new UslugaRashodnikiDto2(
+            usluga.getName(),
+                usluga.getPrice(),
+                usluga.getDuration(),
+                usluga.getNumbers(),
+                usluga.getSotrudnik(),
+                skladList
+        );
+        return dto;
     }
 
 

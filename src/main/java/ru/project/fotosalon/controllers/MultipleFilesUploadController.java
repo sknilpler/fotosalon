@@ -21,7 +21,7 @@ import java.util.List;
 
 @Controller
 //@CrossOrigin(origins = "http://localhost:8082") open for specific port
-@CrossOrigin // open for all ports
+@CrossOrigin(origins = "*") // open for all ports
 public class MultipleFilesUploadController {
 
 
@@ -30,7 +30,7 @@ public class MultipleFilesUploadController {
      * @param files
      * @return FileResponse
      */
-    @PostMapping("/photograph/upload/photos/")
+    @PostMapping("/photograph/upload/photos")
     public ResponseEntity<FileUploadResponse> uploadFiles(@RequestParam("files") MultipartFile[] files) {
         try {
             createDirIfNotExist();

@@ -23,6 +23,8 @@ public class Usluga {
     private double price;
     private int duration; //hours
     private int numbers;
+    private int skidka;
+    private String basisToSkidka;
 
     @ManyToOne
     Sotrudnik sotrudnik;

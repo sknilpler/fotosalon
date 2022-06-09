@@ -18,8 +18,9 @@ import ru.project.fotosalon.services.UserService;
 import java.util.HashSet;
 import java.util.Set;
 
-@CrossOrigin
+
 @Controller
+@CrossOrigin(origins = "*")
 public class RegistrationController {
 
     @Autowired

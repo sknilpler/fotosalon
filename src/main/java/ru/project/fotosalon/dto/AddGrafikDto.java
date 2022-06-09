@@ -6,12 +6,12 @@ public class AddGrafikDto {
 
     private Long idSotr;
 
-    private List<String> dates;
+    private List<DatesDto> dates;
 
     public AddGrafikDto() {
     }
 
-    public AddGrafikDto(Long idSotr, List<String> dates) {
+    public AddGrafikDto(Long idSotr, List<DatesDto> dates) {
         this.idSotr = idSotr;
         this.dates = dates;
     }
@@ -24,11 +24,11 @@ public class AddGrafikDto {
         this.idSotr = idSotr;
     }
 
-    public List<String> getDates() {
+    public List<DatesDto> getDates() {
         return dates;
     }
 
-    public void setDates(List<String> dates) {
+    public void setDates(List<DatesDto> dates) {
         this.dates = dates;
     }
 

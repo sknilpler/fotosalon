@@ -9,4 +9,6 @@ public interface SkidkaRepository extends CrudRepository<Skidka, Long> {
 
     List<Skidka> findAllBySotrudnikId(Long id);
     List<Skidka> findAllByClientId(Long id);
+    List<Skidka> findAllBySotrudnikIdAndUslugaId(Long id_sotr, Long id_uslugi);
+    List<Skidka> findAllBySotrudnikIdAndUslugaIdAndClientId(Long id_sotr, Long id_uslugi, Long id_client);
 }

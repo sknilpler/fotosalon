@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import ru.project.fotosalon.dto.NewSkidkaDto;
 import ru.project.fotosalon.dto.SkidkaDto;
 import ru.project.fotosalon.models.*;
 import ru.project.fotosalon.repos.ClientRepository;
@@ -15,8 +16,9 @@ import ru.project.fotosalon.repos.UslugaRepository;
 import java.util.List;
 import java.util.Objects;
 
-@CrossOrigin
+
 @Controller
+@CrossOrigin(origins = "*")
 public class SotrudnikController {
     @Autowired
     private SotrudnikRepository sotrudnikRepository;
@@ -29,6 +31,7 @@ public class SotrudnikController {
 
     @Autowired
     private UslugaRepository uslugaRepository;
+    private Skidka save;
 
     @PostMapping("/sotrudnik/skidka/add")
     public @ResponseBody
@@ -54,7 +57,7 @@ public class SotrudnikController {
         skidka.setUsluga(u);
         skidka.setSotrudnik(s);
         skidka.setClient(c);
-        return skidkaRepository.save(skidka);
+        return save;
     }
 
     @RequestMapping(value = "/sotrudnik/skidka/all", method = RequestMethod.GET)
@@ -81,4 +84,16 @@ public class SotrudnikController {
         skidkaRepository.deleteById(id);
         return new ResponseEntity<>(HttpStatus.OK);
     }
+
+
+    @PostMapping("/sotrudnik/skidka-to-usluga/add")
+    public @ResponseBody
+    Usluga saveNewSkidkaToUsluga(@RequestBody NewSkidkaDto skidkaDto) {
+        System.out.println(skidkaDto.toString());
+        Usluga u = uslugaRepository.findById(skidkaDto.getIdUslugi()).orElse(null);
+        u.setSkidka(skidkaDto.getSkidka());
+        u.setBasisToSkidka(skidkaDto.getBasis());
+        return uslugaRepository.save(u);
+    }
+
 }

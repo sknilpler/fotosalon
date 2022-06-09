@@ -11,8 +11,9 @@ import ru.project.fotosalon.repos.SkladRepository;
 
 import java.util.List;
 
-@CrossOrigin
+
 @Controller
+@CrossOrigin(origins = "*")
 public class SkladController {
 
     @Autowired
@@ -43,7 +44,7 @@ public class SkladController {
         }
     }
 
-    @PostMapping("/sklad/edit-item/")
+    @PostMapping("/sklad/edit-item")
     public @ResponseBody
     Sklad saveEditSkladItem(@RequestBody Sklad sklad) {
         System.out.println(sklad.toString());
