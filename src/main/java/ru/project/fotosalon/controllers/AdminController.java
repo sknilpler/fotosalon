@@ -242,7 +242,7 @@ public class AdminController {
     @RequestMapping(value = "/admin/sotrudnik/{id}/get-grafik/from/{date1}/to/{date2}", method = RequestMethod.GET)
     public @ResponseBody
     Iterable<Grafik> getGrafikBySotrudnikAndDate(@PathVariable("id") Long id, @PathVariable("date1") String str_date1, @PathVariable("date2") String str_date2) {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd.MM.yyyy");
         Date date1 = new Date();
         Date date2 = new Date();
         try {
@@ -253,6 +253,24 @@ public class AdminController {
         }
         return grafikRepository.findBySotrudnikAndDate(id,date1,date2);
     }
+
+    @RequestMapping(value = "/admin/sotrudnik/{id}/get-grafik/from/{date}", method = RequestMethod.GET)
+    public @ResponseBody
+    Iterable<Grafik> getGrafikBySotrudnikByDate(@PathVariable("id") Long id, @PathVariable("date") String str_date) {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+        Date date1 = new Date();
+        Date date2 = new Date();
+        String d1 = str_date+" 00:00";
+        String d2 = str_date+" 23:59";
+        try {
+            date1 = simpleDateFormat.parse(d1);
+            date2 = simpleDateFormat.parse(d2);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return grafikRepository.findBySotrudnikAndDate(id,date1,date2);
+    }
+
 
     @RequestMapping(value = "/admin/grafik/{id}/delete", method = RequestMethod.GET)
     public @ResponseBody
