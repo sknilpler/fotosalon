@@ -325,6 +325,7 @@ public class AdminController {
         usluga.setNumbers(ustemp.getNumbers());
         usluga.setPrice(ustemp.getPrice());
         usluga.setSotrudnik(sotr);
+        usluga.setFile(ustemp.getFile());
         return uslugaRepository.save(usluga);
     }
 

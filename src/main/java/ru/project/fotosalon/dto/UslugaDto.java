@@ -7,14 +7,24 @@ public class UslugaDto {
     private int duration; //hours
     private int numbers;
     private Long id_sotr;
+    private String file;
 
-    public UslugaDto(Long id, String name, double price, int duration, int numbers, Long id_sotr) {
+    public UslugaDto(Long id, String name, double price, int duration, int numbers, Long id_sotr, String file) {
         this.id = id;
         this.name = name;
         this.price = price;
         this.duration = duration;
         this.numbers = numbers;
         this.id_sotr = id_sotr;
+        this.file = file;
+    }
+
+    public String getFile() {
+        return file;
+    }
+
+    public void setFile(String file) {
+        this.file = file;
     }
 
     public UslugaDto() {
@@ -77,6 +87,7 @@ public class UslugaDto {
                 ", duration=" + duration +
                 ", numbers=" + numbers +
                 ", id_sotr=" + id_sotr +
+                ", file='" + file + '\'' +
                 '}';
     }
 }

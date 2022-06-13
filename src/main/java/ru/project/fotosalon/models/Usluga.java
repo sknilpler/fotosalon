@@ -29,6 +29,8 @@ public class Usluga {
     @ManyToOne
     Sotrudnik sotrudnik;
 
+    private String file;
+
     @JsonIgnore
     @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "usluga_id")
@@ -74,6 +76,27 @@ public class Usluga {
         this.duration = duration;
         this.sotrudnik = sotrudnik;
         this.numbers = numbers;
+    }
+
+    public Usluga(Long id, String name, double price, int duration, int numbers, int skidka, String basisToSkidka, Sotrudnik sotrudnik, String file) {
+        this.id = id;
+        this.name = name;
+        this.price = price;
+        this.duration = duration;
+        this.numbers = numbers;
+        this.skidka = skidka;
+        this.basisToSkidka = basisToSkidka;
+        this.sotrudnik = sotrudnik;
+        this.file = file;
+    }
+
+    public Usluga(String name, double price, int duration, int numbers, Sotrudnik sotrudnik, String file) {
+        this.name = name;
+        this.price = price;
+        this.duration = duration;
+        this.numbers = numbers;
+        this.sotrudnik = sotrudnik;
+        this.file = file;
     }
 
     @Override
