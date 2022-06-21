@@ -22,6 +22,8 @@ public class Client {
     private String fio;
     private String email;
     private String phone;
+    private int skidka;
+    private String basisToSkidka;
 
     @JsonIgnore
     @OneToMany
@@ -62,6 +64,7 @@ public class Client {
                 ", fio='" + fio + '\'' +
                 ", email='" + email + '\'' +
                 ", phone='" + phone + '\'' +
+                ", skidka=" + skidka +
                 '}';
     }
 }

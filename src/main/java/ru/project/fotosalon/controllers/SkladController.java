@@ -5,10 +5,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import ru.project.fotosalon.dto.StatSkladDto;
 import ru.project.fotosalon.models.Sklad;
 import ru.project.fotosalon.models.User;
 import ru.project.fotosalon.repos.SkladRepository;
 
+import java.time.LocalDate;
+import java.time.Year;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 
@@ -64,5 +70,30 @@ public class SkladController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @RequestMapping(value = "/statistik/get-statik", method = RequestMethod.GET)
+    public @ResponseBody
+    List<StatSkladDto> getBuyingTable(){
+        List<StatSkladDto> dtos = new ArrayList<>();
+        Date dateBefore = convertToDateViaInstant(LocalDate.now().minusYears(2));
+        List<Object[]> list = skladRepository.findRashodniksBeetwenDates(dateBefore,new Date());
+
+        for (Object[] obj : list) {
+            long id = Long.parseLong(obj[0].toString());
+            String name = (String) obj[1];
+            String type = (String) obj[4];
+            String units = (String) obj[5];
+            int price = Integer.parseInt(obj[3].toString());
+            int number = Integer.parseInt(obj[2].toString());
+            dtos.add(new StatSkladDto(id, name, type, units, price, number/24));
+        }
+
+        return dtos;
+    }
+
+    public Date convertToDateViaInstant(LocalDate dateToConvert) {
+        return java.util.Date.from(dateToConvert.atStartOfDay()
+                .atZone(ZoneId.systemDefault())
+                .toInstant());
+    }
 
 }

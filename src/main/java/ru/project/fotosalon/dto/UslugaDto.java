@@ -1,22 +1,35 @@
 package ru.project.fotosalon.dto;
 
+import ru.project.fotosalon.models.Sotrudnik;
+
+import java.util.List;
+
 public class UslugaDto {
     private Long id;
     private String name;
     private double price;
     private int duration; //hours
     private int numbers;
-    private Long id_sotr;
     private String file;
+    private String type;
 
-    public UslugaDto(Long id, String name, double price, int duration, int numbers, Long id_sotr, String file) {
+    public UslugaDto(Long id, String name, double price, int duration, int numbers, String file) {
         this.id = id;
         this.name = name;
         this.price = price;
         this.duration = duration;
         this.numbers = numbers;
-        this.id_sotr = id_sotr;
         this.file = file;
+    }
+
+    public UslugaDto(Long id, String name, double price, int duration, int numbers, String file, String type) {
+        this.id = id;
+        this.name = name;
+        this.price = price;
+        this.duration = duration;
+        this.numbers = numbers;
+        this.file = file;
+        this.type = type;
     }
 
     public String getFile() {
@@ -28,6 +41,14 @@ public class UslugaDto {
     }
 
     public UslugaDto() {
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public Long getId() {
@@ -70,13 +91,6 @@ public class UslugaDto {
         this.numbers = numbers;
     }
 
-    public Long getId_sotr() {
-        return id_sotr;
-    }
-
-    public void setId_sotr(Long id_sotr) {
-        this.id_sotr = id_sotr;
-    }
 
     @Override
     public String toString() {
@@ -86,7 +100,6 @@ public class UslugaDto {
                 ", price=" + price +
                 ", duration=" + duration +
                 ", numbers=" + numbers +
-                ", id_sotr=" + id_sotr +
                 ", file='" + file + '\'' +
                 '}';
     }

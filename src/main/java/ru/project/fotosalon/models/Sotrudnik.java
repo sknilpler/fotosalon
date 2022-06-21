@@ -29,10 +29,11 @@ public class Sotrudnik {
 
     private String avatar;
 
+
     @JsonIgnore
     @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "sotrudnik_id")
-    List<Usluga> uslugaList;
+    List<UslugaSotrudnik> uslugaSotrudniks;
 
     @JsonIgnore
     @OneToMany(cascade = CascadeType.ALL)

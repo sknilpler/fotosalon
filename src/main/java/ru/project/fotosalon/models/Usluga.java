@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import javax.persistence.*;
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -26,10 +27,13 @@ public class Usluga {
     private int skidka;
     private String basisToSkidka;
 
-    @ManyToOne
-    Sotrudnik sotrudnik;
+    @JsonIgnore
+    @OneToMany(cascade = CascadeType.ALL)
+    @JoinColumn(name = "usluga_id")
+    List<UslugaSotrudnik> uslugaSotrudniks;
 
     private String file;
+    private String type;
 
     @JsonIgnore
     @OneToMany(cascade = CascadeType.ALL)
@@ -46,11 +50,10 @@ public class Usluga {
     @JoinColumn(name = "usluga_id")
     List<Zakaz> zakazList;
 
-    public Usluga(String name, double price, int duration, int numbers, Sotrudnik sotrudnik) {
+    public Usluga(String name, double price, int duration, int numbers) {
         this.name = name;
         this.price = price;
         this.duration = duration;
-        this.sotrudnik = sotrudnik;
         this.numbers = numbers;
     }
 
@@ -62,23 +65,8 @@ public class Usluga {
         this.numbers = numbers;
     }
 
-    public Usluga(String name, double price, int duration, int numbers) {
-        this.name = name;
-        this.price = price;
-        this.duration = duration;
-        this.numbers = numbers;
-    }
 
-    public Usluga(Long id, String name, double price, int duration, int numbers, Sotrudnik sotrudnik) {
-        this.id = id;
-        this.name = name;
-        this.price = price;
-        this.duration = duration;
-        this.sotrudnik = sotrudnik;
-        this.numbers = numbers;
-    }
-
-    public Usluga(Long id, String name, double price, int duration, int numbers, int skidka, String basisToSkidka, Sotrudnik sotrudnik, String file) {
+    public Usluga(Long id, String name, double price, int duration, int numbers, int skidka, String basisToSkidka, String file) {
         this.id = id;
         this.name = name;
         this.price = price;
@@ -86,17 +74,26 @@ public class Usluga {
         this.numbers = numbers;
         this.skidka = skidka;
         this.basisToSkidka = basisToSkidka;
-        this.sotrudnik = sotrudnik;
         this.file = file;
     }
 
-    public Usluga(String name, double price, int duration, int numbers, Sotrudnik sotrudnik, String file) {
+    public Usluga(String name, double price, int duration, int numbers, String file) {
         this.name = name;
         this.price = price;
         this.duration = duration;
         this.numbers = numbers;
-        this.sotrudnik = sotrudnik;
         this.file = file;
+    }
+
+    public Usluga(String name, double price, int duration, int numbers, int skidka, String basisToSkidka, String file, String type) {
+        this.name = name;
+        this.price = price;
+        this.duration = duration;
+        this.numbers = numbers;
+        this.skidka = skidka;
+        this.basisToSkidka = basisToSkidka;
+        this.file = file;
+        this.type = type;
     }
 
     @Override
@@ -107,7 +104,6 @@ public class Usluga {
                 ", price=" + price +
                 ", duration=" + duration +
                 ", numbers=" + numbers +
-                ", sotrudnik=" + sotrudnik +
                 '}';
     }
 }

@@ -5,13 +5,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import ru.project.fotosalon.dto.MessageDto;
 import ru.project.fotosalon.dto.NewSkidkaDto;
 import ru.project.fotosalon.dto.SkidkaDto;
 import ru.project.fotosalon.models.*;
-import ru.project.fotosalon.repos.ClientRepository;
-import ru.project.fotosalon.repos.SkidkaRepository;
-import ru.project.fotosalon.repos.SotrudnikRepository;
-import ru.project.fotosalon.repos.UslugaRepository;
+import ru.project.fotosalon.repos.*;
+import ru.project.fotosalon.services.EmailSenderService;
 
 import java.util.List;
 import java.util.Objects;
@@ -31,6 +30,10 @@ public class SotrudnikController {
 
     @Autowired
     private UslugaRepository uslugaRepository;
+    @Autowired
+    private ZakazRepository zakazRepository;
+    @Autowired
+    private EmailSenderService senderService;
     private Skidka save;
 
     @PostMapping("/sotrudnik/skidka/add")
@@ -94,6 +97,27 @@ public class SotrudnikController {
         u.setSkidka(skidkaDto.getSkidka());
         u.setBasisToSkidka(skidkaDto.getBasis());
         return uslugaRepository.save(u);
+    }
+
+    @RequestMapping(value = "/sotrudnik/get-rashodniki-by-usluga/{id}", method = RequestMethod.GET)
+    public @ResponseBody
+    List<Rashodnik> getRashodnikiByUsluga(@PathVariable("id") Long id){
+        Usluga u = uslugaRepository.findById(id).orElse(null);
+        return u.getRashodnikList();
+    }
+
+    @RequestMapping(value = "/sotrudnik/get-zakazy/{d1}/{d2}/{id}", method = RequestMethod.GET)
+    public @ResponseBody
+    List<Zakaz> getZakazy(@PathVariable("d1") String d1, @PathVariable("d2") String d2, @PathVariable("id") Long id){
+        return zakazRepository.findAllBySotrudnikIdAndDate(d1,d2,id);
+    }
+
+    @PostMapping("/sotrudnik/send-email")
+    public @ResponseBody
+    ResponseEntity<String> sendMail(@RequestBody MessageDto message){
+        System.out.println(message.toString());
+        senderService.sendEmail(message.getEmail(),message.getTitle(),message.getText());
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
 }

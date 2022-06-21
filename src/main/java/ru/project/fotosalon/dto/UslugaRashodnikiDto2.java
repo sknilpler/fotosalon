@@ -5,6 +5,7 @@ import ru.project.fotosalon.models.Sklad;
 import ru.project.fotosalon.models.Sotrudnik;
 
 import java.util.List;
+import java.util.Set;
 
 public class UslugaRashodnikiDto2 {
 
@@ -12,14 +13,14 @@ public class UslugaRashodnikiDto2 {
     private double price;
     private int duration; //hours
     private int numbers;
-    private Sotrudnik sotr;
+    private List<Sotrudnik> sotr;
 
     private List<Sklad> rashodniki;
 
     public UslugaRashodnikiDto2() {
     }
 
-    public UslugaRashodnikiDto2(String name, double price, int duration, int numbers, Sotrudnik sotr, List<Sklad> rashodniki) {
+    public UslugaRashodnikiDto2(String name, double price, int duration, int numbers, List<Sklad> rashodniki, List<Sotrudnik> sotr) {
         this.name = name;
         this.price = price;
         this.duration = duration;
@@ -60,11 +61,11 @@ public class UslugaRashodnikiDto2 {
         this.numbers = numbers;
     }
 
-    public Sotrudnik getSotr() {
+    public List<Sotrudnik> getSotr() {
         return sotr;
     }
 
-    public void setSotr(Sotrudnik sotr) {
+    public void setSotr(List<Sotrudnik> sotr) {
         this.sotr = sotr;
     }
 

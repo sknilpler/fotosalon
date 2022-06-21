@@ -24,4 +24,14 @@ public interface ZakazRepository extends CrudRepository<Zakaz, Long> {
             "WHERE order_date BETWEEN :d1 AND :d2 AND status = :stat\n" +
             "ORDER BY order_date", nativeQuery = true)
     List<Zakaz> findBetweenTwoDatesAndStatus(@Param("d1") Date d1, @Param("d2") Date d2, @Param("stat") String status);
+
+    @Query(value = "SELECT zakaz.* FROM zakaz, usluga\n" +
+            "WHERE zakaz.usluga_id = usluga.id AND\n" +
+            "usluga.type = :tip", nativeQuery = true)
+    List<Zakaz> findByUslugaType(@Param("tip") String tip);
+
+    List<Zakaz> findAllBySotrudnikId(Long id);
+
+    @Query(value = "SELECT * FROM zakaz WHERE issue_date >= :d1 AND issue_date <= :d2 AND sotrudnik_id = :id order by issue_date", nativeQuery = true)
+    List<Zakaz> findAllBySotrudnikIdAndDate(@Param("d1") String d1, @Param("d2") String d2, @Param("id") Long id);
 }

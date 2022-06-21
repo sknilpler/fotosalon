@@ -3,15 +3,17 @@ package ru.project.fotosalon.controllers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import ru.project.fotosalon.dto.ZakazDto;
+import ru.project.fotosalon.dto.*;
 import ru.project.fotosalon.models.*;
 import ru.project.fotosalon.repos.*;
+import ru.project.fotosalon.utils.TypeHour;
 import ru.project.fotosalon.utils.ZakazStatus;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 @Controller
 @CrossOrigin(origins = "*")
@@ -32,6 +34,12 @@ public class ClientController {
     @Autowired
     private SotrudnikRepository sotrudnikRepository;
 
+    @Autowired
+    private SkladRepository skladRepository;
+
+    @Autowired
+    private GrafikRepository grafikRepository;
+
 
     @PostMapping("/client/add-new-zakaz")
     public @ResponseBody
@@ -40,6 +48,11 @@ public class ClientController {
         Client client = clientRepository.findById(z.getId_client()).orElse(null);
         Sotrudnik sotrudnik = sotrudnikRepository.findById(z.getId_sotr()).orElse(null);
         Usluga usluga = uslugaRepository.findById(z.getId_usligi()).orElse(null);
+        usluga.getRashodnikList().forEach(r -> {
+            Sklad s = r.getSklad();
+            s.setNumber((int) (s.getNumber()-r.getNumbers()));
+            skladRepository.save(s);
+        });
         //Skidka skidka = skidkaRepository.findAllBySotrudnikIdAndUslugaIdAndClientId(sotrudnik.getId(),usluga.getId(),client.getId()).get(0);
         Zakaz zakaz = new Zakaz(
                 new Date(),
@@ -115,11 +128,43 @@ public class ClientController {
         Zakaz zakaz = zakazRepository.findById(id).orElse(null);
         if (status == ZakazStatus.COMPLETE){
             zakaz.setCompleteDate(new Date());
-            zakaz.setStatus(status);
         }
         if (status == ZakazStatus.ISSUED){
             zakaz.setIssueDate(new Date());
-            zakaz.setStatus(status);
+        }
+        zakaz.setStatus(status);
+        return zakazRepository.save(zakaz);
+    }
+
+    @PostMapping("/client/add-to-photograph")
+    public @ResponseBody
+    Zakaz addToPhotograph(@RequestBody ZapisDto z) {
+        System.out.println(z.toString());
+
+        Client client = clientRepository.findById(z.getId_client()).orElse(null);
+        Sotrudnik sotrudnik = sotrudnikRepository.findById(z.getId_sotr()).orElse(null);
+        Usluga usluga = uslugaRepository.findById(z.getId_usl()).orElse(null);
+        usluga.getRashodnikList().forEach(r -> {
+            Sklad s = r.getSklad();
+            s.setNumber((int) (s.getNumber()-r.getNumbers()));
+            skladRepository.save(s);
+        });
+        //Skidka skidka = skidkaRepository.findAllBySotrudnikIdAndUslugaIdAndClientId(sotrudnik.getId(),usluga.getId(),client.getId()).get(0);
+        Zakaz zakaz = new Zakaz(
+                new Date(),
+                null,
+                Objects.requireNonNull(grafikRepository.findById(z.getGrafiks().get(0).getId()).orElse(null)).getData(),
+                ZakazStatus.CREATED,
+                usluga.getPrice()-(usluga.getPrice()/100.0)*usluga.getSkidka(),
+                client,
+                sotrudnik,
+                usluga,
+                1
+        );
+        for (IdsDto idsDto: z.getGrafiks()) {
+            Grafik grafik = grafikRepository.findById(idsDto.getId()).orElse(null);
+            grafik.setType(TypeHour.BUSY);
+            grafikRepository.save(grafik);
         }
         return zakazRepository.save(zakaz);
     }
