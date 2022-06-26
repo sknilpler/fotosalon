@@ -1,6 +1,11 @@
 package ru.project.fotosalon.controllers;
 
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -13,11 +18,20 @@ import ru.project.fotosalon.services.UserService;
 import ru.project.fotosalon.utils.FileUploadUtil;
 
 import javax.servlet.ServletException;
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 @RestController
@@ -454,7 +468,7 @@ public class AdminController {
         Object[] obj12 = uslugaRepository.getUslugaTotalByDate(d1 + "-12-01", d1 + "-12-31");
 
         dtos.add(new UslugaTotalByYearDto("Январь", Integer.parseInt(((Object[]) obj1[0])[0].toString()), Double.parseDouble(((Object[]) obj1[0])[1].toString())));
-        dtos.add(new UslugaTotalByYearDto("Фквраль", Integer.parseInt(((Object[]) obj2[0])[0].toString()), Double.parseDouble(((Object[]) obj2[0])[1].toString())));
+        dtos.add(new UslugaTotalByYearDto("Февраль", Integer.parseInt(((Object[]) obj2[0])[0].toString()), Double.parseDouble(((Object[]) obj2[0])[1].toString())));
         dtos.add(new UslugaTotalByYearDto("Март", Integer.parseInt(((Object[]) obj3[0])[0].toString()), Double.parseDouble(((Object[]) obj3[0])[1].toString())));
         dtos.add(new UslugaTotalByYearDto("Апрель", Integer.parseInt(((Object[]) obj4[0])[0].toString()), Double.parseDouble(((Object[]) obj4[0])[1].toString())));
         dtos.add(new UslugaTotalByYearDto("Май", Integer.parseInt(((Object[]) obj5[0])[0].toString()), Double.parseDouble(((Object[]) obj5[0])[1].toString())));
@@ -563,12 +577,191 @@ public class AdminController {
             double premiya = Double.parseDouble(obj[6].toString());
             String avatar = (String) obj[7];
             int hours = Integer.parseInt(obj[8].toString());
-            double zarplata = ((oklad+premiya)/160.0)*hours;
+            double zarplata = ((oklad + premiya) / 160.0) * hours;
 
             zarplataDto.add(new ZarplataDTO(id, username, fio, post, phone, oklad, premiya, avatar, hours, zarplata));
         }
 
         return zarplataDto;
+    }
+
+    @RequestMapping(value = "/admin/get-all-clients", method = RequestMethod.GET)
+    public @ResponseBody
+    Iterable<Client> getAllClients() {
+        return clientRepository.findAll();
+    }
+
+    @RequestMapping(value = "/admin/get-income-expense-by-date/{d1}/{d2}", method = RequestMethod.GET)
+    public @ResponseBody
+    List<IncomeExpenseDTO> getIncomeExpense(@PathVariable("d1") String d1, @PathVariable("d2") String d2) {
+        List<IncomeExpenseDTO> dtos = new ArrayList<>();
+
+        LocalDate startDate = LocalDate.parse(d1);
+        LocalDate endDate = LocalDate.parse(d2);
+
+        long numOfDays = ChronoUnit.DAYS.between(startDate, endDate);
+
+        List<LocalDate> listOfDates = Stream.iterate(startDate, date -> date.plusDays(1))
+                .limit(numOfDays)
+                .collect(Collectors.toList());
+
+        System.out.println(listOfDates.size());
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        listOfDates.forEach(d -> {
+            String dd1 = formatter.format(d) + " 00:00";
+            String dd2 = formatter.format(d) + " 23:59";
+            List<Object[]> list = zakazRepository.getIncomeConsumptionByDate(dd1, dd2);
+            for (Object[] obj : list) {
+                double income = Double.parseDouble(obj[0].toString());
+                double expense = Double.parseDouble(obj[1].toString());
+                dtos.add(new IncomeExpenseDTO(formatter2.format(d), income, expense));
+            }
+        });
+
+        return dtos;
+    }
+
+
+    /**
+     * Печать приход расход
+     */
+    @RequestMapping(value = "/admin/print-income-expense-by-date/{d1}/{d2}", method = RequestMethod.GET)
+    public void printIncomeExpense(@PathVariable("d1") String d1, @PathVariable("d2") String d2, HttpServletResponse response) throws IOException {
+
+        List<IncomeExpenseDTO> dtos = new ArrayList<>();
+
+        LocalDate startDate = LocalDate.parse(d1);
+        LocalDate endDate = LocalDate.parse(d2);
+
+        long numOfDays = ChronoUnit.DAYS.between(startDate, endDate);
+
+        List<LocalDate> listOfDates = Stream.iterate(startDate, date -> date.plusDays(1))
+                .limit(numOfDays)
+                .collect(Collectors.toList());
+
+        System.out.println(listOfDates.size());
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        listOfDates.forEach(d -> {
+            String dd1 = formatter.format(d) + " 00:00";
+            String dd2 = formatter.format(d) + " 23:59";
+            List<Object[]> list = zakazRepository.getIncomeConsumptionByDate(dd1, dd2);
+            for (Object[] obj : list) {
+                double income = Double.parseDouble(obj[0].toString());
+                double expense = Double.parseDouble(obj[1].toString());
+                dtos.add(new IncomeExpenseDTO(formatter2.format(d), income, expense));
+            }
+        });
+        String filename = "Доходы и расходы за " + d1 +" - "+ d2 + " период.xlsx";
+        ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
+                .filename(filename, StandardCharsets.UTF_8)
+                .build();
+        response.setContentType("application/octet-stream");
+        String headerKey = "Content-Disposition";
+        String headerValue = contentDisposition.toString();
+
+        response.setHeader(headerKey, headerValue);
+
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        CellStyle cellStyle = workbook.createCellStyle();
+
+
+        Font font = workbook.createFont();
+        font.setFontName("Times New Roman");
+        font.setFontHeightInPoints((short)14);
+        font.setBold(true);
+        cellStyle.setFont(font);
+
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+//Set borders
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+
+        Sheet sheet = workbook.createSheet("Доходы и расходы");
+        sheet.createRow(0);
+        sheet.createRow(1);
+        sheet.createRow(2);
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(i).createCell(i);
+        }
+        sheet.addMergedRegion(new CellRangeAddress(
+                0, //first row (0-based)
+                0, //last row  (0-based)
+                0, //first column (0-based)
+                2  //last column  (0-based)
+        ));
+        CellStyle cellStyleTopic = workbook.createCellStyle();
+        Font fontTopic = workbook.createFont();
+        fontTopic.setFontName("Times New Roman");
+        fontTopic.setFontHeightInPoints((short)14);
+        fontTopic.setBold(true);
+        cellStyleTopic.setFont(fontTopic);
+
+        cellStyleTopic.setAlignment(HorizontalAlignment.CENTER);
+        cellStyleTopic.setVerticalAlignment(VerticalAlignment.CENTER);
+        sheet.getRow(0).getCell(0).setCellStyle(cellStyleTopic);
+        sheet.getRow(0).getCell(0).setCellValue("Данные о расходах и доходах с " + formatter2.format(LocalDate.parse(d1)) +" по "+ formatter2.format(LocalDate.parse(d2)));
+
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(2).createCell(i).setCellStyle(cellStyle);
+        }
+        sheet.getRow(2).getCell(0).setCellValue("Дата");
+        sheet.getRow(2).getCell(1).setCellValue("Доход, руб");
+        sheet.getRow(2).getCell(2).setCellValue("Расход, руб");
+
+        Font font2 = workbook.createFont();
+        font2.setFontName("Times New Roman");
+        font2.setFontHeightInPoints((short)14);
+        font2.setBold(false);
+        CellStyle cellStyle2 = workbook.createCellStyle();
+        cellStyle2.setFont(font2);
+        cellStyle2.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle2.setVerticalAlignment(VerticalAlignment.CENTER);
+        cellStyle2.setBorderTop(BorderStyle.THIN);
+        cellStyle2.setBorderRight(BorderStyle.THIN);
+        cellStyle2.setBorderBottom(BorderStyle.THIN);
+        cellStyle2.setBorderLeft(BorderStyle.THIN);
+
+        for (int i = 3; i < dtos.size()+4; i++) {
+            sheet.createRow(i);
+            for (int j = 0; j < 3; j++) {
+                sheet.getRow(i).createCell(j);
+                sheet.getRow(i).getCell(j).setCellStyle(cellStyle2);
+                if ((j==1)||(j==2)){
+                    sheet.getRow(i).getCell(j).setCellType(CellType.NUMERIC);
+                }
+            }
+        }
+        int row = 3;
+        double sumIncome = 0;
+        double sumExpense = 0;
+        for (IncomeExpenseDTO dto : dtos) {
+            sheet.getRow(row).getCell(0).setCellValue(dto.getDate());
+            sheet.getRow(row).getCell(1).setCellValue(dto.getIncome());
+            sheet.getRow(row).getCell(2).setCellValue(dto.getExpense());
+            sumIncome = sumIncome + dto.getIncome();
+            sumExpense = sumExpense + dto.getExpense();
+            row++;
+        }
+        sheet.getRow(row).getCell(0).setCellValue("Итого");
+        sheet.getRow(row).getCell(1).setCellValue(sumIncome);
+        sheet.getRow(row).getCell(2).setCellValue(sumExpense);
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(row).getCell(i).setCellStyle(cellStyle);
+        }
+        for (int i = 0; i < 3; i++) {
+            sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(i,sheet.getColumnWidth(i)*25/10);
+        }
+
+        ServletOutputStream outputStream = response.getOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+        outputStream.close();
     }
 }
 

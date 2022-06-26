@@ -32,6 +32,13 @@ public interface ZakazRepository extends CrudRepository<Zakaz, Long> {
 
     List<Zakaz> findAllBySotrudnikId(Long id);
 
-    @Query(value = "SELECT * FROM zakaz WHERE issue_date >= :d1 AND issue_date <= :d2 AND sotrudnik_id = :id order by issue_date", nativeQuery = true)
+    @Query(value = "SELECT * FROM zakaz WHERE order_date >= :d1 AND order_date <= :d2 AND sotrudnik_id = :id order by order_date", nativeQuery = true)
     List<Zakaz> findAllBySotrudnikIdAndDate(@Param("d1") String d1, @Param("d2") String d2, @Param("id") Long id);
+
+    @Query(value = "SELECT COALESCE(SUM(zakaz.total_price),0) AS income, COALESCE(SUM(rashodnik.numbers*sklad.price),0) AS consumption FROM zakaz,rashodnik,sklad\n" +
+            "WHERE\n" +
+            "zakaz.order_date >= :d1 AND zakaz.order_date <= :d2 AND\n" +
+            "zakaz.usluga_id = rashodnik.usluga_id AND\n" +
+            "rashodnik.sklad_id = sklad.id;",nativeQuery = true)
+    List<Object[]> getIncomeConsumptionByDate(@Param("d1") String d1, @Param("d2") String d2);
 }

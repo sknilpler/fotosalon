@@ -8,12 +8,13 @@ import org.springframework.web.bind.annotation.*;
 import ru.project.fotosalon.dto.MessageDto;
 import ru.project.fotosalon.dto.NewSkidkaDto;
 import ru.project.fotosalon.dto.SkidkaDto;
+import ru.project.fotosalon.dto.ZakazyPhotographDTO;
 import ru.project.fotosalon.models.*;
 import ru.project.fotosalon.repos.*;
 import ru.project.fotosalon.services.EmailSenderService;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 
 @Controller
@@ -34,6 +35,8 @@ public class SotrudnikController {
     private ZakazRepository zakazRepository;
     @Autowired
     private EmailSenderService senderService;
+    @Autowired
+    private GrafikRepository grafikRepository;
     private Skidka save;
 
     @PostMapping("/sotrudnik/skidka/add")
@@ -101,22 +104,37 @@ public class SotrudnikController {
 
     @RequestMapping(value = "/sotrudnik/get-rashodniki-by-usluga/{id}", method = RequestMethod.GET)
     public @ResponseBody
-    List<Rashodnik> getRashodnikiByUsluga(@PathVariable("id") Long id){
+    List<Rashodnik> getRashodnikiByUsluga(@PathVariable("id") Long id) {
         Usluga u = uslugaRepository.findById(id).orElse(null);
         return u.getRashodnikList();
     }
 
     @RequestMapping(value = "/sotrudnik/get-zakazy/{d1}/{d2}/{id}", method = RequestMethod.GET)
     public @ResponseBody
-    List<Zakaz> getZakazy(@PathVariable("d1") String d1, @PathVariable("d2") String d2, @PathVariable("id") Long id){
-        return zakazRepository.findAllBySotrudnikIdAndDate(d1,d2,id);
+    List<Zakaz> getZakazy(@PathVariable("d1") String d1, @PathVariable("d2") String d2, @PathVariable("id") Long id) {
+        return zakazRepository.findAllBySotrudnikIdAndDate(d1, d2, id);
+    }
+
+    @RequestMapping(value = "/sotrudnik/get-zakazy-for-photograph/{d1}/{d2}/{id}", method = RequestMethod.GET)
+    public @ResponseBody
+    List<ZakazyPhotographDTO> getZakazyToPhotograph(@PathVariable("d1") String d1, @PathVariable("d2") String d2, @PathVariable("id") Long id) {
+
+        List<Zakaz> zakazi = zakazRepository.findAllBySotrudnikIdAndDate(d1, d2, id);
+        List<ZakazyPhotographDTO> dtos = new ArrayList<>();
+
+        zakazi.forEach(z -> {
+            System.out.println(z.toString());
+            List<Grafik> grafiks = grafikRepository.findByZakazAndSotrudnik(z.getId(), id);
+            dtos.add(new ZakazyPhotographDTO(z.getId(), z.getOrderDate(), z.getCompleteDate(), z.getIssueDate(), z.getStatus(), z.getTotalPrice(), z.getNumber(), grafiks, z.getClient(), z.getSotrudnik(), z.getUsluga()));
+        });
+        return dtos;
     }
 
     @PostMapping("/sotrudnik/send-email")
     public @ResponseBody
-    ResponseEntity<String> sendMail(@RequestBody MessageDto message){
+    ResponseEntity<String> sendMail(@RequestBody MessageDto message) {
         System.out.println(message.toString());
-        senderService.sendEmail(message.getEmail(),message.getTitle(),message.getText());
+        senderService.sendEmail(message.getEmail(), message.getTitle(), message.getText());
         return new ResponseEntity<>(HttpStatus.OK);
     }
 

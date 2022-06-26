@@ -150,7 +150,7 @@ public class ClientController {
             skladRepository.save(s);
         });
         //Skidka skidka = skidkaRepository.findAllBySotrudnikIdAndUslugaIdAndClientId(sotrudnik.getId(),usluga.getId(),client.getId()).get(0);
-        Zakaz zakaz = new Zakaz(
+        Zakaz zakaz =  zakazRepository.save(new Zakaz(
                 new Date(),
                 null,
                 Objects.requireNonNull(grafikRepository.findById(z.getGrafiks().get(0).getId()).orElse(null)).getData(),
@@ -160,13 +160,15 @@ public class ClientController {
                 sotrudnik,
                 usluga,
                 1
-        );
+        ));
+
         for (IdsDto idsDto: z.getGrafiks()) {
             Grafik grafik = grafikRepository.findById(idsDto.getId()).orElse(null);
             grafik.setType(TypeHour.BUSY);
+            grafik.setId_zakaz(zakaz.getId());
             grafikRepository.save(grafik);
         }
-        return zakazRepository.save(zakaz);
+        return zakaz;
     }
 
 
