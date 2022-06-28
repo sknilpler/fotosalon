@@ -31,9 +31,10 @@ public interface UslugaRepository extends CrudRepository<Usluga, Long> {
     Object[] getUslugaTotalByDate(@Param("d1") String d1, @Param("d2") String d2);
 
     @Query(value = "SELECT usluga.id,usluga.name,usluga.price,usluga.file,usluga.type, COUNT(zakaz.id) as num FROM usluga, zakaz\n" +
-            "WHERE usluga.id = zakaz.usluga_id\n" +
+            "WHERE usluga.id = zakaz.usluga_id AND\n" +
+            "zakaz.order_date >= :d1 AND zakaz.order_date <= :d2 \n"+
             "GROUP BY usluga.id\n" +
             "ORDER BY num DESC", nativeQuery = true)
-    List<Object[]> getPopularUsluga();
+    List<Object[]> getPopularUsluga(@Param("d1") String d1, @Param("d2") String d2);
 
 }

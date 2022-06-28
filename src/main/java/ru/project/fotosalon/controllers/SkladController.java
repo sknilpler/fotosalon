@@ -10,6 +10,7 @@ import ru.project.fotosalon.models.Sklad;
 import ru.project.fotosalon.models.User;
 import ru.project.fotosalon.repos.SkladRepository;
 
+import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.Year;
 import java.time.ZoneId;
@@ -76,14 +77,14 @@ public class SkladController {
         List<StatSkladDto> dtos = new ArrayList<>();
         Date dateBefore = convertToDateViaInstant(LocalDate.now().minusYears(2));
         List<Object[]> list = skladRepository.findRashodniksBeetwenDates(dateBefore,new Date());
-
+        DecimalFormat df = new DecimalFormat("0.00");
         for (Object[] obj : list) {
             long id = Long.parseLong(obj[0].toString());
             String name = (String) obj[1];
             String type = (String) obj[4];
             String units = (String) obj[5];
             int price = Integer.parseInt(obj[3].toString());
-            int number = Integer.parseInt(obj[2].toString());
+            double number = Double.parseDouble(obj[2].toString());
             dtos.add(new StatSkladDto(id, name, type, units, price, number/24));
         }
 

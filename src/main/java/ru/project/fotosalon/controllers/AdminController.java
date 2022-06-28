@@ -5,7 +5,6 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -16,11 +15,11 @@ import ru.project.fotosalon.models.*;
 import ru.project.fotosalon.repos.*;
 import ru.project.fotosalon.services.UserService;
 import ru.project.fotosalon.utils.FileUploadUtil;
+import ru.project.fotosalon.utils.ZakazStatus;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
@@ -448,6 +447,138 @@ public class AdminController {
         return dtos;
     }
 
+    @RequestMapping(value = "/admin/usluga/print-statistic-by-date/{d1}/{d2}", method = RequestMethod.POST)
+    public void printServicesStatisticByDate(@PathVariable("d1") String d1, @PathVariable("d2") String d2, HttpServletResponse response) throws IOException {
+        List<UslugaRenderedDto> dtos = new ArrayList<>();
+        List<Object[]> list = uslugaRepository.getRendered(d1, d2);
+
+        for (Object[] obj : list) {
+            long id = Long.parseLong(obj[0].toString());
+            String name = (String) obj[1];
+            double price = Double.parseDouble(obj[2].toString());
+            int num = Integer.parseInt(obj[3].toString());
+            double total = Double.parseDouble(obj[4].toString());
+            dtos.add(new UslugaRenderedDto(id, name, price, num, total));
+        }
+
+        DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        String filename = "Отчет по оказанным услугам за " + d1 + " - " + d2 + " период.xlsx";
+        ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
+                .filename(filename, StandardCharsets.UTF_8)
+                .build();
+        response.setContentType("application/octet-stream");
+        String headerKey = "Content-Disposition";
+        String headerValue = contentDisposition.toString();
+
+        response.setHeader(headerKey, headerValue);
+
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        CellStyle cellStyle = workbook.createCellStyle();
+
+
+        Font font = workbook.createFont();
+        font.setFontName("Times New Roman");
+        font.setFontHeightInPoints((short) 14);
+        font.setBold(true);
+        cellStyle.setFont(font);
+
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+//Set borders
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+
+        Sheet sheet = workbook.createSheet("Услуги");
+        sheet.createRow(0);
+        sheet.createRow(1);
+        sheet.createRow(2);
+        sheet.createRow(3);
+        for (int i = 0; i < 4; i++) {
+            sheet.getRow(i).createCell(i);
+        }
+        sheet.addMergedRegion(new CellRangeAddress(
+                0, //first row (0-based)
+                0, //last row  (0-based)
+                0, //first column (0-based)
+                3  //last column  (0-based)
+        ));
+        CellStyle cellStyleTopic = workbook.createCellStyle();
+        Font fontTopic = workbook.createFont();
+        fontTopic.setFontName("Times New Roman");
+        fontTopic.setFontHeightInPoints((short) 14);
+        fontTopic.setBold(true);
+        cellStyleTopic.setFont(fontTopic);
+
+        cellStyleTopic.setAlignment(HorizontalAlignment.CENTER);
+        cellStyleTopic.setVerticalAlignment(VerticalAlignment.CENTER);
+        sheet.getRow(0).getCell(0).setCellStyle(cellStyleTopic);
+        sheet.getRow(0).getCell(0).setCellValue("Оказанные услуги с " + formatter2.format(LocalDate.parse(d1)) + " по " + formatter2.format(LocalDate.parse(d2)));
+
+        for (int i = 0; i < 4; i++) {
+            sheet.getRow(2).createCell(i).setCellStyle(cellStyle);
+        }
+        sheet.getRow(2).getCell(0).setCellValue("Наименование услуги");
+        sheet.getRow(2).getCell(1).setCellValue("Стоимость, руб");
+        sheet.getRow(2).getCell(2).setCellValue("Кол-во");
+        sheet.getRow(2).getCell(3).setCellValue("Общая стоимосоть, руб");
+
+        Font font2 = workbook.createFont();
+        font2.setFontName("Times New Roman");
+        font2.setFontHeightInPoints((short) 14);
+        font2.setBold(false);
+        CellStyle cellStyle2 = workbook.createCellStyle();
+        cellStyle2.setFont(font2);
+        cellStyle2.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle2.setVerticalAlignment(VerticalAlignment.CENTER);
+        cellStyle2.setBorderTop(BorderStyle.THIN);
+        cellStyle2.setBorderRight(BorderStyle.THIN);
+        cellStyle2.setBorderBottom(BorderStyle.THIN);
+        cellStyle2.setBorderLeft(BorderStyle.THIN);
+
+        for (int i = 3; i < dtos.size() + 4; i++) {
+            sheet.createRow(i);
+            for (int j = 0; j < 4; j++) {
+                sheet.getRow(i).createCell(j);
+                sheet.getRow(i).getCell(j).setCellStyle(cellStyle2);
+                if ((j == 1) || (j == 2) || (j == 3)) {
+                    sheet.getRow(i).getCell(j).setCellType(CellType.NUMERIC);
+                }
+            }
+        }
+        int row = 3;
+        int sum1 = 0;
+        double sum2 = 0;
+        for (UslugaRenderedDto dto : dtos) {
+            sheet.getRow(row).getCell(0).setCellValue(dto.getName());
+            sheet.getRow(row).getCell(1).setCellValue(dto.getPrice());
+            sheet.getRow(row).getCell(2).setCellValue(dto.getNum());
+            sheet.getRow(row).getCell(3).setCellValue(dto.getTotal());
+            sum1 = sum1 + dto.getNum();
+            sum2 = sum2 + dto.getTotal();
+            row++;
+        }
+        sheet.getRow(row).getCell(0).setCellValue("Итого");
+        sheet.getRow(row).getCell(2).setCellValue(sum1);
+        sheet.getRow(row).getCell(3).setCellValue(sum2);
+
+        for (int i = 0; i < 4; i++) {
+            sheet.getRow(row).getCell(i).setCellStyle(cellStyle);
+        }
+
+        for (int i = 0; i < 4; i++) {
+            sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(i, sheet.getColumnWidth(i) * 15 / 10);
+        }
+
+        ServletOutputStream outputStream = response.getOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+        outputStream.close();
+
+    }
+
 
     @RequestMapping(value = "/admin/usluga/statistic-by-year/{year}", method = RequestMethod.GET)
     public @ResponseBody
@@ -483,18 +614,163 @@ public class AdminController {
         return dtos;
     }
 
+    @RequestMapping(value = "/admin/usluga/print-statistic-by-year/{year}", method = RequestMethod.POST)
+    public void printServicesStatisticByDate(@PathVariable("year") String d1, HttpServletResponse response) throws IOException {
+        List<UslugaTotalByYearDto> dtos = new ArrayList<>();
+        List<Object[]> list = new ArrayList<>();
+        Object[] obj1 = uslugaRepository.getUslugaTotalByDate(d1 + "-01-01", d1 + "-01-31");
+        Object[] obj2 = uslugaRepository.getUslugaTotalByDate(d1 + "-02-01", d1 + "-02-28");
+        Object[] obj3 = uslugaRepository.getUslugaTotalByDate(d1 + "-03-01", d1 + "-03-31");
+        Object[] obj4 = uslugaRepository.getUslugaTotalByDate(d1 + "-04-01", d1 + "-04-30");
+        Object[] obj5 = uslugaRepository.getUslugaTotalByDate(d1 + "-05-01", d1 + "-05-31");
+        Object[] obj6 = uslugaRepository.getUslugaTotalByDate(d1 + "-06-01", d1 + "-06-30");
+        Object[] obj7 = uslugaRepository.getUslugaTotalByDate(d1 + "-07-01", d1 + "-07-31");
+        Object[] obj8 = uslugaRepository.getUslugaTotalByDate(d1 + "-08-01", d1 + "-08-31");
+        Object[] obj9 = uslugaRepository.getUslugaTotalByDate(d1 + "-09-01", d1 + "-09-30");
+        Object[] obj10 = uslugaRepository.getUslugaTotalByDate(d1 + "-10-01", d1 + "-10-31");
+        Object[] obj11 = uslugaRepository.getUslugaTotalByDate(d1 + "-11-01", d1 + "-11-30");
+        Object[] obj12 = uslugaRepository.getUslugaTotalByDate(d1 + "-12-01", d1 + "-12-31");
+
+        dtos.add(new UslugaTotalByYearDto("Январь", Integer.parseInt(((Object[]) obj1[0])[0].toString()), Double.parseDouble(((Object[]) obj1[0])[1].toString())));
+        dtos.add(new UslugaTotalByYearDto("Февраль", Integer.parseInt(((Object[]) obj2[0])[0].toString()), Double.parseDouble(((Object[]) obj2[0])[1].toString())));
+        dtos.add(new UslugaTotalByYearDto("Март", Integer.parseInt(((Object[]) obj3[0])[0].toString()), Double.parseDouble(((Object[]) obj3[0])[1].toString())));
+        dtos.add(new UslugaTotalByYearDto("Апрель", Integer.parseInt(((Object[]) obj4[0])[0].toString()), Double.parseDouble(((Object[]) obj4[0])[1].toString())));
+        dtos.add(new UslugaTotalByYearDto("Май", Integer.parseInt(((Object[]) obj5[0])[0].toString()), Double.parseDouble(((Object[]) obj5[0])[1].toString())));
+        dtos.add(new UslugaTotalByYearDto("Июнь", Integer.parseInt(((Object[]) obj6[0])[0].toString()), Double.parseDouble(((Object[]) obj6[0])[1].toString())));
+        dtos.add(new UslugaTotalByYearDto("Июль", Integer.parseInt(((Object[]) obj7[0])[0].toString()), Double.parseDouble(((Object[]) obj7[0])[1].toString())));
+        dtos.add(new UslugaTotalByYearDto("Август", Integer.parseInt(((Object[]) obj8[0])[0].toString()), Double.parseDouble(((Object[]) obj8[0])[1].toString())));
+        dtos.add(new UslugaTotalByYearDto("Сентябрь", Integer.parseInt(((Object[]) obj9[0])[0].toString()), Double.parseDouble(((Object[]) obj9[0])[1].toString())));
+        dtos.add(new UslugaTotalByYearDto("Октябрь", Integer.parseInt(((Object[]) obj10[0])[0].toString()), Double.parseDouble(((Object[]) obj10[0])[1].toString())));
+        dtos.add(new UslugaTotalByYearDto("Ноябрь", Integer.parseInt(((Object[]) obj11[0])[0].toString()), Double.parseDouble(((Object[]) obj11[0])[1].toString())));
+        dtos.add(new UslugaTotalByYearDto("Декабрь", Integer.parseInt(((Object[]) obj12[0])[0].toString()), Double.parseDouble(((Object[]) obj12[0])[1].toString())));
+
+        DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        String filename = "Отчет по доходам за " + d1 + " год.xlsx";
+        ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
+                .filename(filename, StandardCharsets.UTF_8)
+                .build();
+        response.setContentType("application/octet-stream");
+        String headerKey = "Content-Disposition";
+        String headerValue = contentDisposition.toString();
+
+        response.setHeader(headerKey, headerValue);
+
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        CellStyle cellStyle = workbook.createCellStyle();
+
+
+        Font font = workbook.createFont();
+        font.setFontName("Times New Roman");
+        font.setFontHeightInPoints((short) 14);
+        font.setBold(true);
+        cellStyle.setFont(font);
+
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+//Set borders
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+
+        Sheet sheet = workbook.createSheet("Доход");
+        sheet.createRow(0);
+        sheet.createRow(1);
+        sheet.createRow(2);
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(i).createCell(i);
+        }
+        sheet.addMergedRegion(new CellRangeAddress(
+                0, //first row (0-based)
+                0, //last row  (0-based)
+                0, //first column (0-based)
+                3  //last column  (0-based)
+        ));
+        CellStyle cellStyleTopic = workbook.createCellStyle();
+        Font fontTopic = workbook.createFont();
+        fontTopic.setFontName("Times New Roman");
+        fontTopic.setFontHeightInPoints((short) 14);
+        fontTopic.setBold(true);
+        cellStyleTopic.setFont(fontTopic);
+
+        cellStyleTopic.setAlignment(HorizontalAlignment.CENTER);
+        cellStyleTopic.setVerticalAlignment(VerticalAlignment.CENTER);
+        sheet.getRow(0).getCell(0).setCellStyle(cellStyleTopic);
+        sheet.getRow(0).getCell(0).setCellValue("Отчет по доходам за " + d1 + " год");
+
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(2).createCell(i).setCellStyle(cellStyle);
+        }
+        sheet.getRow(2).getCell(0).setCellValue("Месяц");
+        sheet.getRow(2).getCell(1).setCellValue("Кол-во услуг");
+        sheet.getRow(2).getCell(2).setCellValue("Сумма, руб");
+
+        Font font2 = workbook.createFont();
+        font2.setFontName("Times New Roman");
+        font2.setFontHeightInPoints((short) 14);
+        font2.setBold(false);
+        CellStyle cellStyle2 = workbook.createCellStyle();
+        cellStyle2.setFont(font2);
+        cellStyle2.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle2.setVerticalAlignment(VerticalAlignment.CENTER);
+        cellStyle2.setBorderTop(BorderStyle.THIN);
+        cellStyle2.setBorderRight(BorderStyle.THIN);
+        cellStyle2.setBorderBottom(BorderStyle.THIN);
+        cellStyle2.setBorderLeft(BorderStyle.THIN);
+
+        for (int i = 3; i < dtos.size() + 4; i++) {
+            sheet.createRow(i);
+            for (int j = 0; j < 3; j++) {
+                sheet.getRow(i).createCell(j);
+                sheet.getRow(i).getCell(j).setCellStyle(cellStyle2);
+                if ((j == 1) || (j == 2)) {
+                    sheet.getRow(i).getCell(j).setCellType(CellType.NUMERIC);
+                }
+            }
+        }
+        int row = 3;
+        int sum1 = 0;
+        double sum2 = 0;
+        for (UslugaTotalByYearDto dto : dtos) {
+            sheet.getRow(row).getCell(0).setCellValue(dto.getMonth());
+            sheet.getRow(row).getCell(1).setCellValue(dto.getNum());
+            sheet.getRow(row).getCell(2).setCellValue(dto.getTotal());
+            sum1 = sum1 + dto.getNum();
+            sum2 = sum2 + dto.getTotal();
+            row++;
+        }
+        sheet.getRow(row).getCell(0).setCellValue("Итого");
+        sheet.getRow(row).getCell(1).setCellValue(sum1);
+        sheet.getRow(row).getCell(2).setCellValue(sum2);
+
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(row).getCell(i).setCellStyle(cellStyle);
+        }
+
+        for (int i = 0; i < 3; i++) {
+            sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(i, sheet.getColumnWidth(i) * 15 / 10);
+        }
+
+        ServletOutputStream outputStream = response.getOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+        outputStream.close();
+
+    }
+
     @RequestMapping(value = "/admin/get-zakaz-by-usluga-type/{tip}", method = RequestMethod.GET)
     public @ResponseBody
     List<Zakaz> getZakazByTypeUslugi(@PathVariable("tip") String tip) {
         return zakazRepository.findByUslugaType(tip);
     }
 
-    @RequestMapping(value = "/admin/get-statistic-by-clients", method = RequestMethod.GET)
+    @RequestMapping(value = "/admin/get-statistic-by-clients/{d1}/{d2}", method = RequestMethod.GET)
     public @ResponseBody
-    List<ClientStatisticDto> getClientStatistic() {
+    List<ClientStatisticDto> getClientStatistic(@PathVariable("d1") String d1, @PathVariable("d2") String d2) {
         List<ClientStatisticDto> dtos = new ArrayList<>();
 
-        List<Object[]> list = clientRepository.getClientStatistic();
+        List<Object[]> list = clientRepository.getClientStatistic(d1,d2);
         for (Object[] obj : list) {
             long id = Long.parseLong(obj[0].toString());
             String fio = (String) obj[1];
@@ -505,12 +781,132 @@ public class AdminController {
         return dtos;
     }
 
-    @RequestMapping(value = "/admin/get-statistic-by-uslugi", method = RequestMethod.GET)
+    @RequestMapping(value = "/admin/print-get-statistic-by-clients/{d1}/{d2}", method = RequestMethod.POST)
+    public void printClientStatistic(@PathVariable("d1") String d1, @PathVariable("d2") String d2,HttpServletResponse response) throws IOException {
+        List<ClientStatisticDto> dtos = new ArrayList<>();
+
+        List<Object[]> list = clientRepository.getClientStatistic(d1,d2);
+        for (Object[] obj : list) {
+            long id = Long.parseLong(obj[0].toString());
+            String fio = (String) obj[1];
+            int num = Integer.parseInt(obj[2].toString());
+            Date lastZakazDate = (Date) obj[3];
+            dtos.add(new ClientStatisticDto(id, fio, num, lastZakazDate));
+        }
+
+        DateFormat formatter2 = new SimpleDateFormat("dd.MM.yyyy");
+        String filename = "Отчет по клиентам за " + d1 + " - " + d2 + " период.xlsx";
+        ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
+                .filename(filename, StandardCharsets.UTF_8)
+                .build();
+        response.setContentType("application/octet-stream");
+        String headerKey = "Content-Disposition";
+        String headerValue = contentDisposition.toString();
+
+        response.setHeader(headerKey, headerValue);
+
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        CellStyle cellStyle = workbook.createCellStyle();
+
+
+        Font font = workbook.createFont();
+        font.setFontName("Times New Roman");
+        font.setFontHeightInPoints((short) 14);
+        font.setBold(true);
+        cellStyle.setFont(font);
+
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+//Set borders
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+
+        Sheet sheet = workbook.createSheet("Клиенты");
+        sheet.createRow(0);
+        sheet.createRow(1);
+        sheet.createRow(2);
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(i).createCell(i);
+        }
+        sheet.addMergedRegion(new CellRangeAddress(
+                0, //first row (0-based)
+                0, //last row  (0-based)
+                0, //first column (0-based)
+                3  //last column  (0-based)
+        ));
+        CellStyle cellStyleTopic = workbook.createCellStyle();
+        Font fontTopic = workbook.createFont();
+        fontTopic.setFontName("Times New Roman");
+        fontTopic.setFontHeightInPoints((short) 14);
+        fontTopic.setBold(true);
+        cellStyleTopic.setFont(fontTopic);
+
+        cellStyleTopic.setAlignment(HorizontalAlignment.CENTER);
+        cellStyleTopic.setVerticalAlignment(VerticalAlignment.CENTER);
+        sheet.getRow(0).getCell(0).setCellStyle(cellStyleTopic);
+        sheet.getRow(0).getCell(0).setCellValue("Отчет по клиентам за " + d1 + " - " + d2 + " период");
+
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(2).createCell(i).setCellStyle(cellStyle);
+        }
+        sheet.getRow(2).getCell(0).setCellValue("Клиент (ФИО)");
+        sheet.getRow(2).getCell(1).setCellValue("Частота обращения");
+        sheet.getRow(2).getCell(2).setCellValue("Дата последнего заказа");
+
+        Font font2 = workbook.createFont();
+        font2.setFontName("Times New Roman");
+        font2.setFontHeightInPoints((short) 14);
+        font2.setBold(false);
+        CellStyle cellStyle2 = workbook.createCellStyle();
+        cellStyle2.setFont(font2);
+        cellStyle2.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle2.setVerticalAlignment(VerticalAlignment.CENTER);
+        cellStyle2.setBorderTop(BorderStyle.THIN);
+        cellStyle2.setBorderRight(BorderStyle.THIN);
+        cellStyle2.setBorderBottom(BorderStyle.THIN);
+        cellStyle2.setBorderLeft(BorderStyle.THIN);
+
+        for (int i = 3; i < dtos.size() + 3; i++) {
+            sheet.createRow(i);
+            for (int j = 0; j < 3; j++) {
+                sheet.getRow(i).createCell(j);
+                sheet.getRow(i).getCell(j).setCellStyle(cellStyle2);
+                if ((j == 1)) {
+                    sheet.getRow(i).getCell(j).setCellType(CellType.NUMERIC);
+                }
+            }
+        }
+        int row = 3;
+
+        for (ClientStatisticDto dto : dtos) {
+            sheet.getRow(row).getCell(0).setCellValue(dto.getFio());
+            sheet.getRow(row).getCell(1).setCellValue(dto.getNum());
+            sheet.getRow(row).getCell(2).setCellValue(formatter2.format(dto.getLastZakazDate()));
+            row++;
+        }
+
+
+        for (int i = 0; i < 3; i++) {
+            sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(i, sheet.getColumnWidth(i) * 15 / 10);
+        }
+
+        ServletOutputStream outputStream = response.getOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+        outputStream.close();
+
+
+    }
+
+    @RequestMapping(value = "/admin/get-statistic-by-uslugi/{d1}/{d2}", method = RequestMethod.GET)
     public @ResponseBody
-    List<UslugaPopularDto> getPopularUsluga() {
+    List<UslugaPopularDto> getPopularUsluga(@PathVariable("d1") String d1, @PathVariable("d2") String d2) {
         List<UslugaPopularDto> dtos = new ArrayList<>();
 
-        List<Object[]> list = uslugaRepository.getPopularUsluga();
+        List<Object[]> list = uslugaRepository.getPopularUsluga(d1,d2);
         for (Object[] obj : list) {
             long id = Long.parseLong(obj[0].toString());
             String name = (String) obj[1];
@@ -522,6 +918,129 @@ public class AdminController {
             dtos.add(new UslugaPopularDto(id, name, price, file, type, num));
         }
         return dtos;
+    }
+
+    @RequestMapping(value = "/admin/print-statistic-by-uslugi/{d1}/{d2}", method = RequestMethod.POST)
+    public void printPopularUsluga(@PathVariable("d1") String d1, @PathVariable("d2") String d2, HttpServletResponse response) throws IOException {
+        List<UslugaPopularDto> dtos = new ArrayList<>();
+
+        List<Object[]> list = uslugaRepository.getPopularUsluga(d1,d2);
+        for (Object[] obj : list) {
+            long id = Long.parseLong(obj[0].toString());
+            String name = (String) obj[1];
+            double price = Double.parseDouble(obj[2].toString());
+            String file = (String) obj[3];
+            String type = (String) obj[4];
+            int num = Integer.parseInt(obj[5].toString());
+
+            dtos.add(new UslugaPopularDto(id, name, price, file, type, num));
+        }
+
+        DateFormat formatter2 = new SimpleDateFormat("dd.MM.yyyy");
+        String filename = "Отчет по востребованным услугам за " + d1 + " - " + d2 + " период.xlsx";
+        ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
+                .filename(filename, StandardCharsets.UTF_8)
+                .build();
+        response.setContentType("application/octet-stream");
+        String headerKey = "Content-Disposition";
+        String headerValue = contentDisposition.toString();
+
+        response.setHeader(headerKey, headerValue);
+
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        CellStyle cellStyle = workbook.createCellStyle();
+
+
+        Font font = workbook.createFont();
+        font.setFontName("Times New Roman");
+        font.setFontHeightInPoints((short) 14);
+        font.setBold(true);
+        cellStyle.setFont(font);
+
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+//Set borders
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+
+        Sheet sheet = workbook.createSheet("Услуги");
+        sheet.createRow(0);
+        sheet.createRow(1);
+        sheet.createRow(2);
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(i).createCell(i);
+        }
+        sheet.addMergedRegion(new CellRangeAddress(
+                0, //first row (0-based)
+                0, //last row  (0-based)
+                0, //first column (0-based)
+                3  //last column  (0-based)
+        ));
+        CellStyle cellStyleTopic = workbook.createCellStyle();
+        Font fontTopic = workbook.createFont();
+        fontTopic.setFontName("Times New Roman");
+        fontTopic.setFontHeightInPoints((short) 14);
+        fontTopic.setBold(true);
+        cellStyleTopic.setFont(fontTopic);
+
+        cellStyleTopic.setAlignment(HorizontalAlignment.CENTER);
+        cellStyleTopic.setVerticalAlignment(VerticalAlignment.CENTER);
+        sheet.getRow(0).getCell(0).setCellStyle(cellStyleTopic);
+        sheet.getRow(0).getCell(0).setCellValue("Отчет по востребованным услугам за " + d1 + " - " + d2 + " период");
+
+        for (int i = 0; i < 4; i++) {
+            sheet.getRow(2).createCell(i).setCellStyle(cellStyle);
+        }
+        sheet.getRow(2).getCell(0).setCellValue("Наименование услуги");
+        sheet.getRow(2).getCell(1).setCellValue("Стоимость");
+        sheet.getRow(2).getCell(2).setCellValue("Тип");
+        sheet.getRow(2).getCell(3).setCellValue("Кол-во");
+
+        Font font2 = workbook.createFont();
+        font2.setFontName("Times New Roman");
+        font2.setFontHeightInPoints((short) 14);
+        font2.setBold(false);
+        CellStyle cellStyle2 = workbook.createCellStyle();
+        cellStyle2.setFont(font2);
+        cellStyle2.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle2.setVerticalAlignment(VerticalAlignment.CENTER);
+        cellStyle2.setBorderTop(BorderStyle.THIN);
+        cellStyle2.setBorderRight(BorderStyle.THIN);
+        cellStyle2.setBorderBottom(BorderStyle.THIN);
+        cellStyle2.setBorderLeft(BorderStyle.THIN);
+
+        for (int i = 3; i < dtos.size() + 3; i++) {
+            sheet.createRow(i);
+            for (int j = 0; j < 4; j++) {
+                sheet.getRow(i).createCell(j);
+                sheet.getRow(i).getCell(j).setCellStyle(cellStyle2);
+                if ((j == 1)) {
+                    sheet.getRow(i).getCell(j).setCellType(CellType.NUMERIC);
+                }
+            }
+        }
+        int row = 3;
+
+        for (UslugaPopularDto dto : dtos) {
+            sheet.getRow(row).getCell(0).setCellValue(dto.getName());
+            sheet.getRow(row).getCell(1).setCellValue(dto.getPrice());
+            sheet.getRow(row).getCell(2).setCellValue(dto.getType());
+            sheet.getRow(row).getCell(3).setCellValue(dto.getNum());
+            row++;
+        }
+
+
+        for (int i = 0; i < 4; i++) {
+            sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(i, sheet.getColumnWidth(i) * 15 / 10);
+        }
+
+        ServletOutputStream outputStream = response.getOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+        outputStream.close();
     }
 
     @RequestMapping(value = "/admin/get-consumption-between-dates/{d1}/{d2}", method = RequestMethod.GET)
@@ -550,6 +1069,138 @@ public class AdminController {
         }
 
         return dtos;
+    }
+
+    @RequestMapping(value = "/admin/print-consumption-between-dates/{d1}/{d2}", method = RequestMethod.POST)
+    public void printRashodByDate(@PathVariable("d1") String d1, @PathVariable("d2") String d2, HttpServletResponse response) throws IOException {
+        List<StatSkladDto> dtos = new ArrayList<>();
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        Date dateStart = null;
+        Date dateEnd = null;
+        try {
+            dateStart = format.parse(d1);
+            dateEnd = format.parse(d2);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        List<Object[]> list = skladRepository.findRashodniksBeetwenDates(dateStart, dateEnd);
+
+        for (Object[] obj : list) {
+            long id = Long.parseLong(obj[0].toString());
+            String name = (String) obj[1];
+            String type = (String) obj[4];
+            String units = (String) obj[5];
+            int price = Integer.parseInt(obj[3].toString());
+            int number = Integer.parseInt(obj[2].toString());
+            dtos.add(new StatSkladDto(id, name, type, units, price, number));
+        }
+
+        DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        String filename = "Отчет по расходам материалов за " + d1 + " - " + d2 + " период.xlsx";
+        ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
+                .filename(filename, StandardCharsets.UTF_8)
+                .build();
+        response.setContentType("application/octet-stream");
+        String headerKey = "Content-Disposition";
+        String headerValue = contentDisposition.toString();
+
+        response.setHeader(headerKey, headerValue);
+
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        CellStyle cellStyle = workbook.createCellStyle();
+
+
+        Font font = workbook.createFont();
+        font.setFontName("Times New Roman");
+        font.setFontHeightInPoints((short) 14);
+        font.setBold(true);
+        cellStyle.setFont(font);
+
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+//Set borders
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+
+        Sheet sheet = workbook.createSheet("Расходники");
+        sheet.createRow(0);
+        sheet.createRow(1);
+        sheet.createRow(2);
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(i).createCell(i);
+        }
+        sheet.addMergedRegion(new CellRangeAddress(
+                0, //first row (0-based)
+                0, //last row  (0-based)
+                0, //first column (0-based)
+                3  //last column  (0-based)
+        ));
+        CellStyle cellStyleTopic = workbook.createCellStyle();
+        Font fontTopic = workbook.createFont();
+        fontTopic.setFontName("Times New Roman");
+        fontTopic.setFontHeightInPoints((short) 14);
+        fontTopic.setBold(true);
+        cellStyleTopic.setFont(fontTopic);
+
+        cellStyleTopic.setAlignment(HorizontalAlignment.CENTER);
+        cellStyleTopic.setVerticalAlignment(VerticalAlignment.CENTER);
+        sheet.getRow(0).getCell(0).setCellStyle(cellStyleTopic);
+        sheet.getRow(0).getCell(0).setCellValue("Отчет по расходам материалов за " + d1 + " - " + d2 + " период");
+
+        for (int i = 0; i < 4; i++) {
+            sheet.getRow(2).createCell(i).setCellStyle(cellStyle);
+        }
+        sheet.getRow(2).getCell(0).setCellValue("Наименование");
+        sheet.getRow(2).getCell(1).setCellValue("Тип");
+        sheet.getRow(2).getCell(2).setCellValue("Ед. изм.");
+        sheet.getRow(2).getCell(3).setCellValue("Кол-во");
+
+        Font font2 = workbook.createFont();
+        font2.setFontName("Times New Roman");
+        font2.setFontHeightInPoints((short) 14);
+        font2.setBold(false);
+        CellStyle cellStyle2 = workbook.createCellStyle();
+        cellStyle2.setFont(font2);
+        cellStyle2.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle2.setVerticalAlignment(VerticalAlignment.CENTER);
+        cellStyle2.setBorderTop(BorderStyle.THIN);
+        cellStyle2.setBorderRight(BorderStyle.THIN);
+        cellStyle2.setBorderBottom(BorderStyle.THIN);
+        cellStyle2.setBorderLeft(BorderStyle.THIN);
+
+        for (int i = 3; i < dtos.size() + 3; i++) {
+            sheet.createRow(i);
+            for (int j = 0; j < 4; j++) {
+                sheet.getRow(i).createCell(j);
+                sheet.getRow(i).getCell(j).setCellStyle(cellStyle2);
+                if ((j == 1)) {
+                    sheet.getRow(i).getCell(j).setCellType(CellType.NUMERIC);
+                }
+            }
+        }
+        int row = 3;
+
+        for (StatSkladDto dto : dtos) {
+            sheet.getRow(row).getCell(0).setCellValue(dto.getName());
+            sheet.getRow(row).getCell(1).setCellValue(dto.getType());
+            sheet.getRow(row).getCell(2).setCellValue(dto.getUnits());
+            sheet.getRow(row).getCell(3).setCellValue(dto.getNumber());
+            row++;
+        }
+
+
+        for (int i = 0; i < 4; i++) {
+            sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(i, sheet.getColumnWidth(i) * 15 / 10);
+        }
+
+        ServletOutputStream outputStream = response.getOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+        outputStream.close();
+
     }
 
     @PostMapping("/admin/client-add-skidka")
@@ -583,6 +1234,136 @@ public class AdminController {
         }
 
         return zarplataDto;
+    }
+
+    @RequestMapping(value = "/admin/print-zarplata-table/{d1}/{d2}", method = RequestMethod.POST)
+    public void printZarplata(@PathVariable("d1") String d1, @PathVariable("d2") String d2, HttpServletResponse response) throws IOException {
+        List<ZarplataDTO> zarplataDto = new ArrayList<>();
+        List<Object[]> list = sotrudnikRepository.getZarplataStatistic(d1, d2);
+
+        for (Object[] obj : list) {
+            long id = Long.parseLong(obj[0].toString());
+            String username = (String) obj[1];
+            String fio = (String) obj[2];
+            String post = (String) obj[3];
+            String phone = (String) obj[4];
+            double oklad = Double.parseDouble(obj[5].toString());
+            double premiya = Double.parseDouble(obj[6].toString());
+            String avatar = (String) obj[7];
+            int hours = Integer.parseInt(obj[8].toString());
+            double zarplata = ((oklad + premiya) / 160.0) * hours;
+
+            zarplataDto.add(new ZarplataDTO(id, username, fio, post, phone, oklad, premiya, avatar, hours, zarplata));
+        }
+
+
+        DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        String filename = "Отчет по заработной плате за " + d1 + " - " + d2 + " период.xlsx";
+        ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
+                .filename(filename, StandardCharsets.UTF_8)
+                .build();
+        response.setContentType("application/octet-stream");
+        String headerKey = "Content-Disposition";
+        String headerValue = contentDisposition.toString();
+
+        response.setHeader(headerKey, headerValue);
+
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        CellStyle cellStyle = workbook.createCellStyle();
+
+
+        Font font = workbook.createFont();
+        font.setFontName("Times New Roman");
+        font.setFontHeightInPoints((short) 14);
+        font.setBold(true);
+        cellStyle.setFont(font);
+
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+//Set borders
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+
+        Sheet sheet = workbook.createSheet("Сотрудники");
+        sheet.createRow(0);
+        sheet.createRow(1);
+        sheet.createRow(2);
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(i).createCell(i);
+        }
+        sheet.addMergedRegion(new CellRangeAddress(
+                0, //first row (0-based)
+                0, //last row  (0-based)
+                0, //first column (0-based)
+                6  //last column  (0-based)
+        ));
+        CellStyle cellStyleTopic = workbook.createCellStyle();
+        Font fontTopic = workbook.createFont();
+        fontTopic.setFontName("Times New Roman");
+        fontTopic.setFontHeightInPoints((short) 14);
+        fontTopic.setBold(true);
+        cellStyleTopic.setFont(fontTopic);
+
+        cellStyleTopic.setAlignment(HorizontalAlignment.CENTER);
+        cellStyleTopic.setVerticalAlignment(VerticalAlignment.CENTER);
+        sheet.getRow(0).getCell(0).setCellStyle(cellStyleTopic);
+        sheet.getRow(0).getCell(0).setCellValue("Отчет по ЗП за " + d1 + " - " + d2 + " период");
+
+        for (int i = 0; i < 6; i++) {
+            sheet.getRow(2).createCell(i).setCellStyle(cellStyle);
+        }
+        sheet.getRow(2).getCell(0).setCellValue("ФИО");
+        sheet.getRow(2).getCell(1).setCellValue("Должность");
+        sheet.getRow(2).getCell(2).setCellValue("Оклад");
+        sheet.getRow(2).getCell(3).setCellValue("Премия");
+        sheet.getRow(2).getCell(4).setCellValue("Отработано часов");
+        sheet.getRow(2).getCell(5).setCellValue("Зарплата");
+
+        Font font2 = workbook.createFont();
+        font2.setFontName("Times New Roman");
+        font2.setFontHeightInPoints((short) 14);
+        font2.setBold(false);
+        CellStyle cellStyle2 = workbook.createCellStyle();
+        cellStyle2.setFont(font2);
+        cellStyle2.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle2.setVerticalAlignment(VerticalAlignment.CENTER);
+        cellStyle2.setBorderTop(BorderStyle.THIN);
+        cellStyle2.setBorderRight(BorderStyle.THIN);
+        cellStyle2.setBorderBottom(BorderStyle.THIN);
+        cellStyle2.setBorderLeft(BorderStyle.THIN);
+
+        for (int i = 3; i < zarplataDto.size() + 3; i++) {
+            sheet.createRow(i);
+            for (int j = 0; j < 6; j++) {
+                sheet.getRow(i).createCell(j);
+                sheet.getRow(i).getCell(j).setCellStyle(cellStyle2);
+            }
+        }
+        int row = 3;
+
+        for (ZarplataDTO dto : zarplataDto) {
+            sheet.getRow(row).getCell(0).setCellValue(dto.getFio());
+            sheet.getRow(row).getCell(1).setCellValue(dto.getPost());
+            sheet.getRow(row).getCell(2).setCellValue(dto.getOklad());
+            sheet.getRow(row).getCell(3).setCellValue(dto.getPremiya());
+            sheet.getRow(row).getCell(4).setCellValue(dto.getHours());
+            sheet.getRow(row).getCell(5).setCellValue(dto.getZarplata());
+            row++;
+        }
+
+
+        for (int i = 0; i < 6; i++) {
+            sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(i, sheet.getColumnWidth(i) * 15 / 10);
+        }
+
+        ServletOutputStream outputStream = response.getOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+        outputStream.close();
+
     }
 
     @RequestMapping(value = "/admin/get-all-clients", method = RequestMethod.GET)
@@ -626,7 +1407,7 @@ public class AdminController {
     /**
      * Печать приход расход
      */
-    @RequestMapping(value = "/admin/print-income-expense-by-date/{d1}/{d2}", method = RequestMethod.GET)
+    @RequestMapping(value = "/admin/print-income-expense-by-date/{d1}/{d2}", method = RequestMethod.POST)
     public void printIncomeExpense(@PathVariable("d1") String d1, @PathVariable("d2") String d2, HttpServletResponse response) throws IOException {
 
         List<IncomeExpenseDTO> dtos = new ArrayList<>();
@@ -653,7 +1434,7 @@ public class AdminController {
                 dtos.add(new IncomeExpenseDTO(formatter2.format(d), income, expense));
             }
         });
-        String filename = "Доходы и расходы за " + d1 +" - "+ d2 + " период.xlsx";
+        String filename = "Доходы и расходы за " + d1 + " - " + d2 + " период.xlsx";
         ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
                 .filename(filename, StandardCharsets.UTF_8)
                 .build();
@@ -669,7 +1450,7 @@ public class AdminController {
 
         Font font = workbook.createFont();
         font.setFontName("Times New Roman");
-        font.setFontHeightInPoints((short)14);
+        font.setFontHeightInPoints((short) 14);
         font.setBold(true);
         cellStyle.setFont(font);
 
@@ -697,14 +1478,14 @@ public class AdminController {
         CellStyle cellStyleTopic = workbook.createCellStyle();
         Font fontTopic = workbook.createFont();
         fontTopic.setFontName("Times New Roman");
-        fontTopic.setFontHeightInPoints((short)14);
+        fontTopic.setFontHeightInPoints((short) 14);
         fontTopic.setBold(true);
         cellStyleTopic.setFont(fontTopic);
 
         cellStyleTopic.setAlignment(HorizontalAlignment.CENTER);
         cellStyleTopic.setVerticalAlignment(VerticalAlignment.CENTER);
         sheet.getRow(0).getCell(0).setCellStyle(cellStyleTopic);
-        sheet.getRow(0).getCell(0).setCellValue("Данные о расходах и доходах с " + formatter2.format(LocalDate.parse(d1)) +" по "+ formatter2.format(LocalDate.parse(d2)));
+        sheet.getRow(0).getCell(0).setCellValue("Данные о расходах и доходах с " + formatter2.format(LocalDate.parse(d1)) + " по " + formatter2.format(LocalDate.parse(d2)));
 
         for (int i = 0; i < 3; i++) {
             sheet.getRow(2).createCell(i).setCellStyle(cellStyle);
@@ -715,7 +1496,7 @@ public class AdminController {
 
         Font font2 = workbook.createFont();
         font2.setFontName("Times New Roman");
-        font2.setFontHeightInPoints((short)14);
+        font2.setFontHeightInPoints((short) 14);
         font2.setBold(false);
         CellStyle cellStyle2 = workbook.createCellStyle();
         cellStyle2.setFont(font2);
@@ -726,12 +1507,12 @@ public class AdminController {
         cellStyle2.setBorderBottom(BorderStyle.THIN);
         cellStyle2.setBorderLeft(BorderStyle.THIN);
 
-        for (int i = 3; i < dtos.size()+4; i++) {
+        for (int i = 3; i < dtos.size() + 4; i++) {
             sheet.createRow(i);
             for (int j = 0; j < 3; j++) {
                 sheet.getRow(i).createCell(j);
                 sheet.getRow(i).getCell(j).setCellStyle(cellStyle2);
-                if ((j==1)||(j==2)){
+                if ((j == 1) || (j == 2)) {
                     sheet.getRow(i).getCell(j).setCellType(CellType.NUMERIC);
                 }
             }
@@ -755,7 +1536,7 @@ public class AdminController {
         }
         for (int i = 0; i < 3; i++) {
             sheet.autoSizeColumn(i);
-            sheet.setColumnWidth(i,sheet.getColumnWidth(i)*25/10);
+            sheet.setColumnWidth(i, sheet.getColumnWidth(i) * 25 / 10);
         }
 
         ServletOutputStream outputStream = response.getOutputStream();
@@ -763,6 +1544,339 @@ public class AdminController {
         workbook.close();
         outputStream.close();
     }
+
+    @RequestMapping(value = "/admin/set-cancel-status-zakaz/{id}", method = RequestMethod.GET)
+    public @ResponseBody
+    Zakaz setCancel(@PathVariable("id") Long id) {
+        Zakaz zakaz = zakazRepository.findById(id).orElse(null);
+        zakaz.setStatus(ZakazStatus.CANCELED);
+        return zakazRepository.save(zakaz);
+    }
+
+
+    @RequestMapping(value = "/admin/get-consumption-between-dates-for-one/{d1}/{d2}/{id}", method = RequestMethod.GET)
+    public @ResponseBody
+    List<StatSklad2Dto> getOneRashodByDate(@PathVariable("d1") String d1, @PathVariable("d2") String d2, @PathVariable("id") Long id) {
+        List<StatSklad2Dto> dtos = new ArrayList<>();
+        LocalDate startDate = LocalDate.parse(d1);
+        LocalDate endDate = LocalDate.parse(d2);
+        Sklad sklad = skladRepository.findById(id).orElse(null);
+
+        long numOfDays = ChronoUnit.DAYS.between(startDate, endDate);
+
+        List<LocalDate> listOfDates = Stream.iterate(startDate, date -> date.plusDays(1))
+                .limit(numOfDays)
+                .collect(Collectors.toList());
+
+        System.out.println(listOfDates.size());
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        listOfDates.forEach(d -> {
+            String dd1 = formatter.format(d) + " 00:00";
+            String dd2 = formatter.format(d) + " 23:59";
+            List<Object[]> obj1 = skladRepository.findOneRashodnikBeetwenDates(dd1, dd2, id);
+            if (obj1.size() > 0) {
+                Object[] obj = obj1.get(0);
+                dtos.add(new StatSklad2Dto(
+                        (String) obj[0],
+                        (String) obj[1],
+                        (String) obj[2],
+                        Double.parseDouble(obj[3].toString()),
+                        formatter2.format(d)
+                ));
+            } else {
+                dtos.add(new StatSklad2Dto(
+                        sklad.getName(),
+                        sklad.getType(),
+                        sklad.getUnits(),
+                        0,
+                        formatter2.format(d)
+                ));
+            }
+
+        });
+
+        return dtos;
+    }
+
+    @RequestMapping(value = "/admin/print-consumption-between-dates-for-one/{d1}/{d2}/{id}", method = RequestMethod.POST)
+    public void printOneRashodByDate(@PathVariable("d1") String d1, @PathVariable("d2") String d2, @PathVariable("id") Long id, HttpServletResponse response) throws IOException {
+        List<StatSklad2Dto> dtos = new ArrayList<>();
+        LocalDate startDate = LocalDate.parse(d1);
+        LocalDate endDate = LocalDate.parse(d2);
+        Sklad sklad = skladRepository.findById(id).orElse(null);
+
+        long numOfDays = ChronoUnit.DAYS.between(startDate, endDate);
+
+        List<LocalDate> listOfDates = Stream.iterate(startDate, date -> date.plusDays(1))
+                .limit(numOfDays)
+                .collect(Collectors.toList());
+
+        System.out.println(listOfDates.size());
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        listOfDates.forEach(d -> {
+            String dd1 = formatter.format(d) + " 00:00";
+            String dd2 = formatter.format(d) + " 23:59";
+            List<Object[]> obj1 = skladRepository.findOneRashodnikBeetwenDates(dd1, dd2, id);
+            if (obj1.size() > 0) {
+                Object[] obj = obj1.get(0);
+                dtos.add(new StatSklad2Dto(
+                        (String) obj[0],
+                        (String) obj[1],
+                        (String) obj[2],
+                        Double.parseDouble(obj[3].toString()),
+                        formatter2.format(d)
+                ));
+            } else {
+                dtos.add(new StatSklad2Dto(
+                        sklad.getName(),
+                        sklad.getType(),
+                        sklad.getUnits(),
+                        0,
+                        formatter2.format(d)
+                ));
+            }
+
+        });
+
+        String filename = "Данные по расходнику " + sklad.getName() + " за " + d1 + " - " + d2 + " период.xlsx";
+        ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
+                .filename(filename, StandardCharsets.UTF_8)
+                .build();
+        response.setContentType("application/octet-stream");
+        String headerKey = "Content-Disposition";
+        String headerValue = contentDisposition.toString();
+
+        response.setHeader(headerKey, headerValue);
+
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        CellStyle cellStyle = workbook.createCellStyle();
+
+
+        Font font = workbook.createFont();
+        font.setFontName("Times New Roman");
+        font.setFontHeightInPoints((short) 14);
+        font.setBold(true);
+        cellStyle.setFont(font);
+
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+//Set borders
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+
+        Sheet sheet = workbook.createSheet("Расходник");
+        sheet.createRow(0);
+        sheet.createRow(1);
+        sheet.createRow(2);
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(i).createCell(i);
+        }
+        sheet.addMergedRegion(new CellRangeAddress(
+                0, //first row (0-based)
+                0, //last row  (0-based)
+                0, //first column (0-based)
+                5  //last column  (0-based)
+        ));
+        CellStyle cellStyleTopic = workbook.createCellStyle();
+        Font fontTopic = workbook.createFont();
+        fontTopic.setFontName("Times New Roman");
+        fontTopic.setFontHeightInPoints((short) 14);
+        fontTopic.setBold(true);
+        cellStyleTopic.setFont(fontTopic);
+
+        cellStyleTopic.setAlignment(HorizontalAlignment.CENTER);
+        cellStyleTopic.setVerticalAlignment(VerticalAlignment.CENTER);
+        sheet.getRow(0).getCell(0).setCellStyle(cellStyleTopic);
+        sheet.getRow(0).getCell(0).setCellValue("Данные по расходнику " + sklad.getName() + " с " + formatter2.format(LocalDate.parse(d1)) + " по " + formatter2.format(LocalDate.parse(d2)));
+
+        for (int i = 0; i < 5; i++) {
+            sheet.getRow(2).createCell(i).setCellStyle(cellStyle);
+        }
+        sheet.getRow(2).getCell(0).setCellValue("Дата");
+        sheet.getRow(2).getCell(1).setCellValue("Наименование");
+        sheet.getRow(2).getCell(2).setCellValue("Тип");
+        sheet.getRow(2).getCell(3).setCellValue("Ед. изм.");
+        sheet.getRow(2).getCell(4).setCellValue("Израсходавано");
+
+
+        Font font2 = workbook.createFont();
+        font2.setFontName("Times New Roman");
+        font2.setFontHeightInPoints((short) 14);
+        font2.setBold(false);
+        CellStyle cellStyle2 = workbook.createCellStyle();
+        cellStyle2.setFont(font2);
+        cellStyle2.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle2.setVerticalAlignment(VerticalAlignment.CENTER);
+        cellStyle2.setBorderTop(BorderStyle.THIN);
+        cellStyle2.setBorderRight(BorderStyle.THIN);
+        cellStyle2.setBorderBottom(BorderStyle.THIN);
+        cellStyle2.setBorderLeft(BorderStyle.THIN);
+
+        for (int i = 3; i < dtos.size() + 4; i++) {
+            sheet.createRow(i);
+            for (int j = 0; j < 5; j++) {
+                sheet.getRow(i).createCell(j);
+                sheet.getRow(i).getCell(j).setCellStyle(cellStyle2);
+            }
+        }
+        int row = 3;
+
+        for (StatSklad2Dto dto : dtos) {
+            sheet.getRow(row).getCell(0).setCellValue(dto.getDate());
+            sheet.getRow(row).getCell(1).setCellValue(dto.getName());
+            sheet.getRow(row).getCell(2).setCellValue(dto.getType());
+            sheet.getRow(row).getCell(3).setCellValue(dto.getUnits());
+            sheet.getRow(row).getCell(4).setCellValue(dto.getTotal());
+
+            row++;
+        }
+
+        for (int i = 0; i < 5; i++) {
+            sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(i, sheet.getColumnWidth(i) * 25 / 10);
+        }
+
+        ServletOutputStream outputStream = response.getOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+        outputStream.close();
+
+    }
+
+    @RequestMapping(value = "/admin/get-client-skidka-usluga-sotrudnik/{d1}/{d2}", method = RequestMethod.GET)
+    public @ResponseBody
+    List<ClientSkidkaDTO> getClientSkidka(@PathVariable("d1") String d1, @PathVariable("d2") String d2) {
+        SimpleDateFormat format = new SimpleDateFormat("dd.MM.yyyy");
+        List<ClientSkidkaDTO> dtos = new ArrayList<>();
+        List<Object[]> list = clientRepository.getAllSkidka(d1,d2);
+        for (Object[] obj : list) {
+            dtos.add(new ClientSkidkaDTO((String) obj[0], (String) obj[1], format.format((Date) obj[2]), (int) Double.parseDouble(obj[3].toString()), Double.parseDouble(obj[4].toString()), (String) obj[5]));
+        }
+        return dtos;
+    }
+
+    @RequestMapping(value = "/admin/print-client-skidka-usluga-sotrudnik/{d1}/{d2}", method = RequestMethod.GET)
+    public void printClientSkidka(@PathVariable("d1") String d1, @PathVariable("d2") String d2, HttpServletResponse response) throws IOException {
+        List<ClientSkidkaDTO> dtos = new ArrayList<>();
+        SimpleDateFormat format = new SimpleDateFormat("dd.MM.yyyy");
+        List<Object[]> list = clientRepository.getAllSkidka(d1,d2);
+        for (Object[] obj : list) {
+            dtos.add(new ClientSkidkaDTO((String) obj[0], (String) obj[1], format.format((Date) obj[2]), (int) Double.parseDouble(obj[3].toString()), Double.parseDouble(obj[4].toString()), (String) obj[5]));
+        }
+
+        String filename = "Данные по скидкам у клиентов.xlsx";
+        ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
+                .filename(filename, StandardCharsets.UTF_8)
+                .build();
+        response.setContentType("application/octet-stream");
+        String headerKey = "Content-Disposition";
+        String headerValue = contentDisposition.toString();
+
+        response.setHeader(headerKey, headerValue);
+
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        CellStyle cellStyle = workbook.createCellStyle();
+
+
+        Font font = workbook.createFont();
+        font.setFontName("Times New Roman");
+        font.setFontHeightInPoints((short) 14);
+        font.setBold(true);
+        cellStyle.setFont(font);
+
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+//Set borders
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+
+        Sheet sheet = workbook.createSheet("Скидки");
+        sheet.createRow(0);
+        sheet.createRow(1);
+        sheet.createRow(2);
+        for (int i = 0; i < 3; i++) {
+            sheet.getRow(i).createCell(i);
+        }
+        sheet.addMergedRegion(new CellRangeAddress(
+                0, //first row (0-based)
+                0, //last row  (0-based)
+                0, //first column (0-based)
+                5  //last column  (0-based)
+        ));
+        CellStyle cellStyleTopic = workbook.createCellStyle();
+        Font fontTopic = workbook.createFont();
+        fontTopic.setFontName("Times New Roman");
+        fontTopic.setFontHeightInPoints((short) 14);
+        fontTopic.setBold(true);
+        cellStyleTopic.setFont(fontTopic);
+
+        cellStyleTopic.setAlignment(HorizontalAlignment.CENTER);
+        cellStyleTopic.setVerticalAlignment(VerticalAlignment.CENTER);
+        sheet.getRow(0).getCell(0).setCellStyle(cellStyleTopic);
+        sheet.getRow(0).getCell(0).setCellValue("Данные по клиентам за " + d1 + " - " + d2 + " период");
+
+        for (int i = 0; i < 6; i++) {
+            sheet.getRow(2).createCell(i).setCellStyle(cellStyle);
+        }
+        sheet.getRow(2).getCell(0).setCellValue("ФИО клиента");
+        sheet.getRow(2).getCell(1).setCellValue("Услуга");
+        sheet.getRow(2).getCell(2).setCellValue("Дата заказа");
+        sheet.getRow(2).getCell(3).setCellValue("Скидка, %");
+        sheet.getRow(2).getCell(4).setCellValue("Стоимость со скидкой, руб");
+        sheet.getRow(2).getCell(5).setCellValue("Сотрудник");
+
+
+        Font font2 = workbook.createFont();
+        font2.setFontName("Times New Roman");
+        font2.setFontHeightInPoints((short) 14);
+        font2.setBold(false);
+        CellStyle cellStyle2 = workbook.createCellStyle();
+        cellStyle2.setFont(font2);
+        cellStyle2.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle2.setVerticalAlignment(VerticalAlignment.CENTER);
+        cellStyle2.setBorderTop(BorderStyle.THIN);
+        cellStyle2.setBorderRight(BorderStyle.THIN);
+        cellStyle2.setBorderBottom(BorderStyle.THIN);
+        cellStyle2.setBorderLeft(BorderStyle.THIN);
+
+        for (int i = 3; i < dtos.size() + 3; i++) {
+            sheet.createRow(i);
+            for (int j = 0; j < 6; j++) {
+                sheet.getRow(i).createCell(j);
+                sheet.getRow(i).getCell(j).setCellStyle(cellStyle2);
+            }
+        }
+        int row = 3;
+
+        for (ClientSkidkaDTO dto : dtos) {
+            sheet.getRow(row).getCell(0).setCellValue(dto.getFio());
+            sheet.getRow(row).getCell(1).setCellValue(dto.getUsluga());
+            sheet.getRow(row).getCell(2).setCellValue(dto.getData());
+            sheet.getRow(row).getCell(3).setCellValue(dto.getSkidka());
+            sheet.getRow(row).getCell(4).setCellValue(dto.getTotal());
+            sheet.getRow(row).getCell(5).setCellValue(dto.getSotrudnik());
+
+            row++;
+        }
+
+        for (int i = 0; i < 5; i++) {
+            sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(i, sheet.getColumnWidth(i) * 15 / 10);
+        }
+
+        ServletOutputStream outputStream = response.getOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+        outputStream.close();
+    }
+
+
 }
 
 

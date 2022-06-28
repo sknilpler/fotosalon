@@ -6,12 +6,12 @@ public class StatSkladDto {
     private String type;
     private String units;
     private int price;
-    private int number;
+    private double number;
 
     public StatSkladDto() {
     }
 
-    public StatSkladDto(String name, String type, String units, int price, int number) {
+    public StatSkladDto(String name, String type, String units, int price, double number) {
         this.name = name;
         this.type = type;
         this.units = units;
@@ -19,7 +19,7 @@ public class StatSkladDto {
         this.number = number;
     }
 
-    public StatSkladDto(Long id, String name, String type, String units, int price, int number) {
+    public StatSkladDto(Long id, String name, String type, String units, int price, double number) {
         this.id = id;
         this.name = name;
         this.type = type;
@@ -68,11 +68,11 @@ public class StatSkladDto {
         this.price = price;
     }
 
-    public int getNumber() {
+    public double getNumber() {
         return number;
     }
 
-    public void setNumber(int number) {
+    public void setNumber(double number) {
         this.number = number;
     }
 
